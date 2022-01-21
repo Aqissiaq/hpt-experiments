@@ -9,15 +9,12 @@ open import Cubical.Foundations.HLevels
 open import Cubical.Foundations.Function
 open import Cubical.Data.Sigma
 open import Cubical.Data.Int
+open import Cubical.Foundations.GroupoidLaws
 
-
-{-# BUILTIN REWRITE _≡_ #-}
+open import Data.Bool
+  using(if_then_else_)
 
 module trivial-hpt where
-
-curry : {ℓ : Level} {A : Type ℓ} {B : A → Type ℓ} {C : (a : A) → B a → Type ℓ} →
-        ((p : Σ A B) → C (fst p) (snd p)) → (x : A) → (y : B x) → C x y
-curry f x y = f (x , y)
 
 module repo (A : Type₀) where
   data Maybe : Type₀ where
@@ -57,7 +54,7 @@ thought:
       {P : {x : Maybe} → [ a0 ] ≡ [ x ] → Type₀}
       {r : P refl}
       {e : {x : A} → (p : [ a0 ] ≡ [ Nothing ]) → P p ≃ P (p ∙ sett x)}
-      {q : [ a0 ] ≡ [ Nothing ]} {x : A} → -- note 100% sure this a:Maybe is free
+      {q : [ a0 ] ≡ [ Nothing ]} {x : A} → -- note 100% sure this x:A is free
       Simple-path-ind P r e (q ∙ (sett x)) ≡ equivFun (e q) (Simple-path-ind P r e q)
 
   bin-path-ind : {ℓ : Level} → (a0 : Maybe)
@@ -76,6 +73,7 @@ thought:
 
   -- {-# REWRITE β-refl #-}
   -- breaks something in src/full/Agda/TypeChecking/Rewriting/NonLinPattern.hs:152
+  -- https://github.com/agda/agda/issues/5589
 
   Span : Maybe → Maybe → Type₀
   Span x y = Σ[ a ∈ Maybe ] ( [ a ] ≡ [ x ] ) × ([ a ] ≡ [ y ])
@@ -92,17 +90,65 @@ thought:
                  (λ _ → idEquiv ({c : Maybe} (q₁ : [ base ] ≡ [ c ]) → CoSpan x y))
                  p q
 
-open module test = repo Int
+  merge' : {x y : Maybe} → Span x y → CoSpan x y
+  merge' (Nothing , p , q) = bin-path-ind Nothing (λ {b} {c} _ _ → CoSpan b c)
+                                                  (Nothing , refl , refl)
+                                                  (λ {a} _ → e a)
+                                                  (λ {a} _ → e' a)
+                             p q
+    where
+      glue-on : (a : A) → CoSpan Nothing Nothing → CoSpan Nothing (Just a)
+      glue-on a (nadir , p' , q') = nadir , p' , (sym (sett a)) ∙ q'
 
-sett0 = sett 0
-sett1 = sett 1
+      un-glue : (a : A) → CoSpan Nothing (Just a) → CoSpan Nothing Nothing
+      un-glue a (nadir , p' , q') = nadir , p' , (sett a) ∙ q'
 
-span1 : Span (Just 0) (Just 1)
-span1 = Nothing , (sett0 , sett1)
+      unglue-glue : (a : A) → section (glue-on a) (un-glue a)
+      unglue-glue a (nadir , p' , q') = glue-on a (un-glue a (nadir , p' , q'))
+        ≡⟨ refl ⟩ nadir , p' , sym (sett a) ∙ (sett a ∙ q')
+        ≡⟨ cong (λ r → (nadir , p' , r)) (assoc _ _ _) ⟩ nadir , p' , (sym (sett a) ∙ sett a) ∙ q'
+        ≡⟨ cong (λ r → (nadir , p' , r ∙ q')) (lCancel _) ⟩ nadir , p' , refl ∙ q'
+        ≡⟨ cong (λ r → (nadir , p' , r)) (sym (lUnit _)) ⟩ (nadir , p' , q') ∎
 
-merge1 = merge span1
+      glue-unglue : (a : A) → retract (glue-on a) (un-glue a)
+      glue-unglue a (nadir , p' , q') = un-glue a (glue-on a (nadir , p' , q'))
+        ≡⟨ refl ⟩ nadir , p' , sett a ∙ (sym (sett a) ∙ q')
+        ≡⟨ cong (λ r → (nadir , p' , r)) (assoc _ _ _) ⟩ nadir , p' , (sett a ∙ sym (sett a)) ∙ q'
+        ≡⟨ cong (λ r → (nadir , p' , r ∙ q')) (rCancel _) ⟩ nadir , p' , refl ∙ q'
+        ≡⟨ cong (λ r → (nadir , p' , r)) (sym (lUnit _)) ⟩ (nadir , p' , q') ∎
 
-span2 : Span Nothing Nothing
-span2 = Nothing , (refl , refl)
+      e : (a : A) → CoSpan Nothing Nothing ≃ CoSpan Nothing (Just a)
+      e a = isoToEquiv (iso (glue-on a) (un-glue a) (unglue-glue a) (glue-unglue a))
 
-merge2 = merge span2
+      e' : (a : A) → ({c : Maybe} → (q' : [ Nothing ] ≡ [ c ]) → CoSpan Nothing c)
+                  ≃ ({c : Maybe} → (q' : [ Nothing ] ≡ [ c ]) → CoSpan (Just a) c)
+      e' a = {!!}
+
+  merge' (Just a , p , q) = bin-path-ind (Just a) (λ {b} {c} _ _ → CoSpan b c)
+                                         (Just a , refl , refl)
+                                         (λ {x} _ → e x)
+                                         (λ _ → {!!})
+                            p q
+         where
+           unset : (x : A) → CoSpan (Just a) Nothing → CoSpan (Just a) (Just x)
+           unset x (nadir , p' , q') = nadir , p' , (sym (sett x)) ∙ q'
+
+           set : (x : A) → CoSpan (Just a) (Just x) → CoSpan (Just a) Nothing
+           set x (nadir , p' , q') = nadir , p' , (sett x) ∙ q'
+
+           set-unset : (x : A) → section (unset x) (set x)
+           set-unset x (nadir , p' , q') = unset x (set x (nadir , p' , q'))
+             ≡⟨ refl ⟩ (nadir , p' , sym (sett x) ∙ sett x ∙ q')
+             ≡⟨ cong (λ r → (nadir , p' , r)) (assoc _ _ _) ⟩ (nadir , p' , (sym (sett x) ∙ sett x) ∙ q')
+             ≡⟨ cong (λ r → (nadir , p' , r ∙ q')) (lCancel _) ⟩ (nadir , p' , refl ∙ q')
+             ≡⟨ cong (λ r → (nadir , p' , r)) (sym (lUnit _)) ⟩ (nadir , p' , q') ∎
+
+           unset-set : (x : A) → retract (unset x) (set x)
+           unset-set x (nadir , p' , q') = set x (unset x (nadir , p' , q'))
+             ≡⟨ refl ⟩ nadir , p' , sett x ∙ (sym (sett x) ∙ q')
+             ≡⟨ cong (λ r → (nadir , p' , r)) (assoc _ _ _) ⟩ nadir , p' , (sett x ∙ sym (sett x)) ∙ q'
+             ≡⟨ cong (λ r → (nadir , p' , r ∙ q')) (rCancel _) ⟩ nadir , p' , refl ∙ q'
+             ≡⟨ cong (λ r → (nadir , p' , r)) (sym (lUnit _)) ⟩ (nadir , p' , q') ∎
+
+           e : (x : A) → CoSpan (Just a) Nothing ≃ CoSpan (Just a) (Just x)
+           e x = isoToEquiv (iso (unset x) (set x) (set-unset x) (unset-set x))
