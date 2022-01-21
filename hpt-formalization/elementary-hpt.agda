@@ -35,7 +35,7 @@ open import Cubical.Foundations.Univalence
   interpretation of a Patch as an equivalence of Ints
   this has the effect of making add1 equivalent to (+1)
 -}
-interp : Patch → Int ≃ Int
+interp : Patch → ℤ ≃ ℤ
 interp p = pathToEquiv (cong I p)
 
 {-
@@ -91,7 +91,7 @@ patch-comm : (p q : Patch) → p ∙ q ≡ q ∙ p
 patch-comm p q =
   p ∙ q ≡⟨ uncurry-helper p (intLoop m) q (intLoop n) _∙_ (p-is-n , q-is-m) ⟩ intLoop n ∙ intLoop m
         ≡⟨ intLoop-hom n m ⟩                                                  intLoop (n + m)
-        ≡⟨ cong intLoop (+-comm n m) ⟩                                        intLoop (m + n)
+        ≡⟨ cong intLoop (+Comm n m) ⟩                                        intLoop (m + n)
         ≡⟨ sym (intLoop-hom m n) ⟩                                            intLoop m ∙ intLoop n
         ≡⟨ uncurry-helper (intLoop m) p (intLoop n) q _∙_ (m-is-q , n-is-p) ⟩ q ∙ p ∎
   where

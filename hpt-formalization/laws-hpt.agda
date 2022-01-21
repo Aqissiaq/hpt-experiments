@@ -3,6 +3,9 @@
 Implementation of the patch theory described in
 5. A Patch Theory With laws (Angiuli et al.)
 
+NOTE: compEquiv with swapat is giving some issues after updating to cubical-0.3
+      not fixing right now
+
 -}
 
 module laws-hpt where
@@ -37,7 +40,7 @@ open import Relation.Nullary
 open import Relation.Binary
 
 open import Cubical.Foundations.Everything
-  hiding(_∘_ ; I)
+  hiding(_∘_ ; I ; id)
 open import Cubical.Foundations.Id
   using(∥_∥)
 
