@@ -97,17 +97,17 @@ thought:
   mergeEqLeft a (nadir , p' , q') = nadir , p' , (sett a) ∙ q'
 
   mergeEquiv : {x : Maybe} (a : A) → CoSpan x Nothing ≃ CoSpan x (Just a)
-  mergeEquiv a = isoToEquiv (iso (mergeEqRight a) (mergeEqLeft a) (unglue-glue a) (glue-unglue a))
+  mergeEquiv a = isoToEquiv (iso (mergeEqRight a) (mergeEqLeft a) (left-right a) (right-left a))
     where
-    unglue-glue : (a : A) → section (mergeEqRight a) (mergeEqLeft a)
-    unglue-glue a (nadir , p' , q') = mergeEqRight a (mergeEqLeft a (nadir , p' , q'))
+    left-right : (a : A) → section (mergeEqRight a) (mergeEqLeft a)
+    left-right a (nadir , p' , q') = mergeEqRight a (mergeEqLeft a (nadir , p' , q'))
       ≡⟨ refl ⟩ nadir , p' , sym (sett a) ∙ (sett a ∙ q')
       ≡⟨ cong (λ r → (nadir , p' , r)) (assoc _ _ _) ⟩ nadir , p' , (sym (sett a) ∙ sett a) ∙ q'
       ≡⟨ cong (λ r → (nadir , p' , r ∙ q')) (lCancel _) ⟩ nadir , p' , refl ∙ q'
       ≡⟨ cong (λ r → (nadir , p' , r)) (sym (lUnit _)) ⟩ (nadir , p' , q') ∎
 
-    glue-unglue : (a : A) → retract (mergeEqRight a) (mergeEqLeft a)
-    glue-unglue a (nadir , p' , q') = mergeEqLeft a (mergeEqRight a (nadir , p' , q'))
+    right-left : (a : A) → retract (mergeEqRight a) (mergeEqLeft a)
+    right-left a (nadir , p' , q') = mergeEqLeft a (mergeEqRight a (nadir , p' , q'))
       ≡⟨ refl ⟩ nadir , p' , sett a ∙ (sym (sett a) ∙ q')
       ≡⟨ cong (λ r → (nadir , p' , r)) (assoc _ _ _) ⟩ nadir , p' , (sett a ∙ sym (sett a)) ∙ q'
       ≡⟨ cong (λ r → (nadir , p' , r ∙ q')) (rCancel _) ⟩ nadir , p' , refl ∙ q'
@@ -159,7 +159,36 @@ thought:
                             p q
 
   -- computing
-  -- actually nvm, I want to factor out the equivalences before we do this
+  refl-sett : {a : A} → merge (Nothing , refl , sett a) ≡ (Nothing , refl , sym (sett a))
+  refl-sett {a} = merge (Nothing , refl , sett a)
+    ≡⟨ cong (λ p → merge (Nothing , refl , p)) (lUnit _) ⟩ bin-path-ind Nothing P r e e' refl (refl ∙ (sett a))
+    ≡⟨ refl ⟩ bin-path-ind Nothing P r e e' refl (refl ∙ (sett a))
+    ≡⟨ β-refl {Nothing} {_} {_} {e' {a}} ⟩ ind-helper (refl ∙ (sett a))
+    ≡⟨ β-path ⟩ equivFun (e refl)
+                  (Simple-path-ind (λ p → P refl p) r e refl)
+    ≡⟨ β-path {Nothing} ⟩ mergeEqRight a
+                (Simple-path-ind (λ p → P refl p) r e refl)
+    ≡⟨ cong (λ x → mergeEqRight a x) β-refl ⟩ mergeEqRight a r
+    ≡⟨ refl ⟩ (Nothing , refl , sym (sett a) ∙ refl)
+    ≡⟨ cong (λ p → (Nothing , refl , p)) (sym (rUnit _)) ⟩ (Nothing , refl , sym (sett a)) ∎
+    where
+    P  : {b c : Maybe} → [ Nothing ] ≡ [ b ] → [ Nothing ] ≡ [ c ] → Type _
+    P {b} {c} _ _ = CoSpan b c
+
+    r : P refl refl
+    r = (Nothing , refl , refl)
+
+    e : {x : A} → (p : [ Nothing ] ≡ [ Nothing ]) → P refl p ≃ P refl (p ∙ sett x)
+    e {a} _ = mergeEquiv a
+
+    e' : ({x : A} (p : [ Nothing ] ≡ [ Nothing ]) →
+             ({c : Maybe} (q : [ Nothing ] ≡ [ c ]) → P p q) ≃
+             ({c : Maybe} (q : [ Nothing ] ≡ [ c ]) → P (p ∙ sett x) q))
+    e' {a} _ = lemma-compEquiv (mergeEquiv' a)
+
+    ind-helper : {c : Maybe} (q : [ Nothing ] ≡ [ c ]) → P refl q
+    ind-helper = Simple-path-ind (λ p → P refl p) r e
+
   -- sett-sett : {a b : A} → merge' (Nothing , (sett a) , (sett b)) ≡ (Nothing , sym (sett a) , sym (sett b))
   -- sett-sett {a} {b} = merge' (Nothing , (sett a) , (sett b))
   --   ≡⟨ {!!} ⟩ ?
