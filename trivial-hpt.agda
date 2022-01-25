@@ -11,9 +11,6 @@ open import Cubical.Data.Sigma
 open import Cubical.Data.Int
 open import Cubical.Foundations.GroupoidLaws
 
-open import Data.Bool
-  using(if_then_else_)
-
 module trivial-hpt where
 
 module repo (A : Type₀) where
@@ -54,7 +51,7 @@ thought:
       {P : {x : Maybe} → [ a0 ] ≡ [ x ] → Type₀}
       {r : P refl}
       {e : {x : A} → (p : [ a0 ] ≡ [ Nothing ]) → P p ≃ P (p ∙ sett x)}
-      {q : [ a0 ] ≡ [ Nothing ]} {x : A} → -- note 100% sure this x:A is free
+      {q : [ a0 ] ≡ [ Nothing ]} {x : A} →
       Simple-path-ind P r e (q ∙ (sett x)) ≡ equivFun (e q) (Simple-path-ind P r e q)
 
   bin-path-ind : {ℓ : Level} → (a0 : Maybe)
@@ -90,11 +87,16 @@ thought:
                  (λ _ → idEquiv ({c : Maybe} (q₁ : [ base ] ≡ [ c ]) → CoSpan x y))
                  p q
 
+  -- massaging the types of equivΠ to fit in my holes
+  lemma-compEquiv : {X : Type} {A B C : X → Type} → ({x : X} → A x ≃ B x)
+                  → ({x : X} → (q : C x) → A x) ≃ ({x : X} → (q : C x) → B x)
+  lemma-compEquiv e = equivImplicitΠCod (equivΠCod λ _ → e)
+
   merge' : {x y : Maybe} → Span x y → CoSpan x y
   merge' (Nothing , p , q) = bin-path-ind Nothing (λ {b} {c} _ _ → CoSpan b c)
                                                   (Nothing , refl , refl)
                                                   (λ {a} _ → e a)
-                                                  (λ {a} _ → e' a)
+                                                  (λ {a} _ → lemma-compEquiv (e' a))
                              p q
     where
       glue-on : (a : A) → CoSpan Nothing Nothing → CoSpan Nothing (Just a)
@@ -120,35 +122,94 @@ thought:
       e : (a : A) → CoSpan Nothing Nothing ≃ CoSpan Nothing (Just a)
       e a = isoToEquiv (iso (glue-on a) (un-glue a) (unglue-glue a) (glue-unglue a))
 
-      e' : (a : A) → ({c : Maybe} → (q' : [ Nothing ] ≡ [ c ]) → CoSpan Nothing c)
-                  ≃ ({c : Maybe} → (q' : [ Nothing ] ≡ [ c ]) → CoSpan (Just a) c)
-      e' a = {!!}
+      glue-on' : (a : A) {x : Maybe} → CoSpan Nothing x → CoSpan (Just a) x
+      glue-on' a (nadir , p' , q') = nadir , (sym (sett a)) ∙ p' , q'
 
+      un-glue' : (a : A) {x : Maybe}  → CoSpan (Just a) x → CoSpan Nothing x
+      un-glue' a (nadir , p' , q') = nadir , (sett a) ∙ p' , q'
+
+      unglue-glue' : (a : A) {x : Maybe} → section (glue-on' a {x}) (un-glue' a)
+      unglue-glue' a {x} (nadir , p' , q') = glue-on' a (un-glue' a (nadir , p' , q'))
+        ≡⟨ refl ⟩ nadir , sym (sett a) ∙ (sett a ∙ p') , q'
+        ≡⟨ cong (λ r → (nadir , r , q')) (assoc _ _ _) ⟩ nadir , (sym (sett a) ∙ sett a) ∙ p' , q'
+        ≡⟨ cong compExplicit (lCancel _) ⟩ nadir , refl ∙ p' , q'
+        ≡⟨ cong (λ r → (nadir , r , q')) (sym (lUnit _)) ⟩ (nadir , p' , q') ∎
+          where
+          -- need to explicitly type this for warnings (why?)
+          compExplicit : [ Just a ] ≡ [ Just a ] → CoSpan (Just a) x
+          compExplicit r = (nadir , r ∙ p' , q')
+
+      glue-unglue' : (a : A) {x : Maybe} → retract (glue-on' a {x}) (un-glue' a)
+      glue-unglue' a {x} (nadir , p' , q') = un-glue' a (glue-on' a (nadir , p' , q'))
+        ≡⟨ refl ⟩ nadir , sett a ∙ (sym (sett a) ∙ p') , q'
+        ≡⟨ cong (λ r → (nadir , r , q')) (assoc _ _ _) ⟩ nadir , (sett a ∙ sym (sett a)) ∙ p' , q'
+        ≡⟨ cong compExplicit (rCancel _ ) ⟩ nadir , refl ∙ p' , q'
+        ≡⟨ cong (λ r → nadir , r , q') (sym (lUnit _)) ⟩ (nadir , p' , q') ∎
+          where
+          compExplicit : [ Nothing ] ≡ [ Nothing ] → CoSpan Nothing x
+          compExplicit r = (nadir , r ∙ p' , q')
+
+
+      e' : (a : A) → {x : Maybe} → CoSpan Nothing x ≃ CoSpan (Just a) x
+      e' a = isoToEquiv (iso (glue-on' a) (un-glue' a) (unglue-glue' a) (glue-unglue' a))
+
+-- this basically identical, but the types are different. not very elegant
   merge' (Just a , p , q) = bin-path-ind (Just a) (λ {b} {c} _ _ → CoSpan b c)
                                          (Just a , refl , refl)
                                          (λ {x} _ → e x)
-                                         (λ _ → {!!})
+                                         (λ {x} _ → lemma-compEquiv (e' x))
                             p q
          where
-           unset : (x : A) → CoSpan (Just a) Nothing → CoSpan (Just a) (Just x)
-           unset x (nadir , p' , q') = nadir , p' , (sym (sett x)) ∙ q'
+           un-glue : (x : A) → CoSpan (Just a) Nothing → CoSpan (Just a) (Just x)
+           un-glue x (nadir , p' , q') = nadir , p' , (sym (sett x)) ∙ q'
 
-           set : (x : A) → CoSpan (Just a) (Just x) → CoSpan (Just a) Nothing
-           set x (nadir , p' , q') = nadir , p' , (sett x) ∙ q'
+           glue-on : (x : A) → CoSpan (Just a) (Just x) → CoSpan (Just a) Nothing
+           glue-on x (nadir , p' , q') = nadir , p' , (sett x) ∙ q'
 
-           set-unset : (x : A) → section (unset x) (set x)
-           set-unset x (nadir , p' , q') = unset x (set x (nadir , p' , q'))
+           glue-un-glue-on : (x : A) → section (un-glue x) (glue-on x)
+           glue-un-glue-on x (nadir , p' , q') = un-glue x (glue-on x (nadir , p' , q'))
              ≡⟨ refl ⟩ (nadir , p' , sym (sett x) ∙ sett x ∙ q')
              ≡⟨ cong (λ r → (nadir , p' , r)) (assoc _ _ _) ⟩ (nadir , p' , (sym (sett x) ∙ sett x) ∙ q')
              ≡⟨ cong (λ r → (nadir , p' , r ∙ q')) (lCancel _) ⟩ (nadir , p' , refl ∙ q')
              ≡⟨ cong (λ r → (nadir , p' , r)) (sym (lUnit _)) ⟩ (nadir , p' , q') ∎
 
-           unset-set : (x : A) → retract (unset x) (set x)
-           unset-set x (nadir , p' , q') = set x (unset x (nadir , p' , q'))
+           un-glue-glue-on : (x : A) → retract (un-glue x) (glue-on x)
+           un-glue-glue-on x (nadir , p' , q') = glue-on x (un-glue x (nadir , p' , q'))
              ≡⟨ refl ⟩ nadir , p' , sett x ∙ (sym (sett x) ∙ q')
              ≡⟨ cong (λ r → (nadir , p' , r)) (assoc _ _ _) ⟩ nadir , p' , (sett x ∙ sym (sett x)) ∙ q'
              ≡⟨ cong (λ r → (nadir , p' , r ∙ q')) (rCancel _) ⟩ nadir , p' , refl ∙ q'
              ≡⟨ cong (λ r → (nadir , p' , r)) (sym (lUnit _)) ⟩ (nadir , p' , q') ∎
 
            e : (x : A) → CoSpan (Just a) Nothing ≃ CoSpan (Just a) (Just x)
-           e x = isoToEquiv (iso (unset x) (set x) (set-unset x) (unset-set x))
+           e x = isoToEquiv (iso (un-glue x) (glue-on x) (glue-un-glue-on x) (un-glue-glue-on x))
+
+           -- all the _' stuff is identical to unprimed *including* types ?¿
+           glue-on' : (a : A) {x : Maybe} → CoSpan Nothing x → CoSpan (Just a) x
+           glue-on' a (nadir , p' , q') = nadir , (sym (sett a)) ∙ p' , q'
+
+           un-glue' : (a : A) {x : Maybe}  → CoSpan (Just a) x → CoSpan Nothing x
+           un-glue' a (nadir , p' , q') = nadir , (sett a) ∙ p' , q'
+
+           unglue-glue' : (a : A) {x : Maybe} → section (glue-on' a {x}) (un-glue' a)
+           unglue-glue' a {x} (nadir , p' , q') = glue-on' a (un-glue' a (nadir , p' , q'))
+             ≡⟨ refl ⟩ nadir , sym (sett a) ∙ (sett a ∙ p') , q'
+             ≡⟨ cong (λ r → (nadir , r , q')) (assoc _ _ _) ⟩ nadir , (sym (sett a) ∙ sett a) ∙ p' , q'
+             ≡⟨ cong compExplicit (lCancel _) ⟩ nadir , refl ∙ p' , q'
+             ≡⟨ cong (λ r → (nadir , r , q')) (sym (lUnit _)) ⟩ (nadir , p' , q') ∎
+               where
+               -- need to explicitly type this for warnings (why?)
+               compExplicit : [ Just a ] ≡ [ Just a ] → CoSpan (Just a) x
+               compExplicit r = (nadir , r ∙ p' , q')
+
+           glue-unglue' : (a : A) {x : Maybe} → retract (glue-on' a {x}) (un-glue' a)
+           glue-unglue' a {x} (nadir , p' , q') = un-glue' a (glue-on' a (nadir , p' , q'))
+             ≡⟨ refl ⟩ nadir , sett a ∙ (sym (sett a) ∙ p') , q'
+             ≡⟨ cong (λ r → (nadir , r , q')) (assoc _ _ _) ⟩ nadir , (sett a ∙ sym (sett a)) ∙ p' , q'
+             ≡⟨ cong compExplicit (rCancel _ ) ⟩ nadir , refl ∙ p' , q'
+             ≡⟨ cong (λ r → nadir , r , q') (sym (lUnit _)) ⟩ (nadir , p' , q') ∎
+               where
+               compExplicit : [ Nothing ] ≡ [ Nothing ] → CoSpan Nothing x
+               compExplicit r = (nadir , r ∙ p' , q')
+
+           e' : (a : A) → {x : Maybe} → CoSpan Nothing x ≃ CoSpan (Just a) x
+           e' a = isoToEquiv (iso (glue-on' a) (un-glue' a) (unglue-glue' a) (glue-unglue' a))
