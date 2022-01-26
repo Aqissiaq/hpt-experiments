@@ -189,12 +189,48 @@ thought:
     ind-helper : {c : Maybe} (q : [ Nothing ] ≡ [ c ]) → P refl q
     ind-helper = Simple-path-ind (λ p → P refl p) r e
 
-  -- sett-sett : {a b : A} → merge' (Nothing , (sett a) , (sett b)) ≡ (Nothing , sym (sett a) , sym (sett b))
-  -- sett-sett {a} {b} = merge' (Nothing , (sett a) , (sett b))
-  --   ≡⟨ {!!} ⟩ ?
-  --   ≡⟨ {!!} ⟩ (Nothing , sym (sett a) , sym (sett b)) ∎
-  --     where
-  --     P {b} {c} _ _ = CoSpan b c
-  --     r = (Nothing , refl , refl)
-  --     e = (λ {a} _ → e a)
-  --     (λ {a} _ → lemma-compEquiv (e' a))
+  sett-sett : {a b : A} → merge (Nothing , (sett a) , (sett b)) ≡ (Nothing , sym (sett a) , sym (sett b))
+  sett-sett {a} {b} = merge (Nothing , (sett a) , (sett b))
+    ≡⟨ cong (λ p → merge (Nothing , p , sett b)) (lUnit _) ⟩
+      bin-path-ind Nothing P r e e' (refl ∙ (sett a)) (sett b)
+    ≡⟨ refl ⟩ Simple-path-ind (λ p → ({c : Maybe} → (q : [ Nothing ] ≡ [ c ]) → P p q))
+                              ind-helper e' (refl ∙ (sett a)) (sett b)
+    ≡⟨ β-path ⟩
+      equivFun (mergeEquiv' a) (Simple-path-ind _ ind-helper e' (sett b))
+    ≡⟨ cong (λ p → (equivFun (mergeEquiv' a) (Simple-path-ind _ ind-helper e' p))) (lUnit (sett b)) ⟩
+      equivFun (mergeEquiv' a) (Simple-path-ind _ ind-helper e' (refl ∙ sett b))
+    ≡⟨ cong (λ x → equivFun (mergeEquiv' a) x) β-path ⟩
+      equivFun (mergeEquiv' a) (equivFun (e refl) (Simple-path-ind _ ind-helper _ refl))
+    ≡⟨ cong (λ x → equivFun (mergeEquiv' a) (equivFun (e refl) x)) β-refl ⟩
+      equivFun (mergeEquiv' a) (equivFun (e refl) (ind-helper refl))
+    ≡⟨ refl ⟩
+      equivFun (mergeEquiv' a) (equivFun (e refl) (Simple-path-ind (λ p → P refl p) r e refl))
+    ≡⟨ cong (λ x → equivFun (mergeEquiv' a) (equivFun (e refl) x)) β-refl ⟩
+      equivFun (mergeEquiv' a) (equivFun (e refl) r)
+    ≡⟨ refl ⟩
+      equivFun (mergeEquiv' a) (mergeEqRight b r)
+    ≡⟨ refl ⟩
+      equivFun (mergeEquiv' a) (Nothing , refl , (sym (sett b)) ∙ refl)
+    ≡⟨ refl ⟩
+      (Nothing , (sym (sett a)) ∙ refl , (sym (sett b)) ∙ refl)
+    ≡⟨ cong (λ p → (Nothing , p , _)) (sym (rCancel _)) ⟩
+      (Nothing , sym (sett a) , (sym (sett b)) ∙ refl)
+    ≡⟨ cong (λ p → (Nothing , _ , p)) (sym (rCancel _)) ⟩
+      (Nothing , sym (sett a) , sym (sett b)) ∎
+      where
+      P  : {b c : Maybe} → [ Nothing ] ≡ [ b ] → [ Nothing ] ≡ [ c ] → Type _
+      P {b} {c} _ _ = CoSpan b c
+
+      r : P refl refl
+      r = (Nothing , refl , refl)
+
+      e : {x : A} → (p : [ Nothing ] ≡ [ Nothing ]) → P refl p ≃ P refl (p ∙ sett x)
+      e {a} _ = mergeEquiv a
+
+      e' : ({x : A} (p : [ Nothing ] ≡ [ Nothing ]) →
+        ({c : Maybe} (q : [ Nothing ] ≡ [ c ]) → P p q) ≃
+        ({c : Maybe} (q : [ Nothing ] ≡ [ c ]) → P (p ∙ sett x) q))
+      e' {a} _ = lemma-compEquiv (mergeEquiv' a)
+
+      ind-helper : {c : Maybe} (q : [ Nothing ] ≡ [ c ]) → P refl q
+      ind-helper = Simple-path-ind (λ p → P refl p) r e
