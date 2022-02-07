@@ -10,180 +10,78 @@ open import Cubical.Foundations.GroupoidLaws
 
 module merge-test where
 
-module repo (A : Type₀) where
-  data Maybe : Type₀ where
-    Nothing : Maybe
-    Just    : A → Maybe
+data Base : Type where
+  A : Base
+  B : Base
 
-  data Simple : Type₀ where
-    [_] : Maybe → Simple
-    sett    : ∀ a → [ Nothing ] ≡ [ Just a ]
-    -- apply : (f : A → A) →  [ (Just a) ] ≡ [ (Just (f a)) ]
+data Repo : Type where
+  [_] : Base → Repo
+  patch :  [ A ] ≡ [ B ]
 
-  postulate
-    Simple-path-ind :
-      {ℓ : Level}
-      {a0 : Maybe}
-      (P : {x : Maybe} → [ a0 ] ≡ [ x ] → Type ℓ)
-      → P refl
-      → ({x : A} → (p : [ a0 ] ≡ [ Nothing ]) → P p ≃ P (p ∙ sett x))
-      -------------------------------------------------------------------
-      → {b : Maybe} → (q : [ a0 ] ≡ [ b ]) → P q
+postulate
+  path-ind :
+    {ℓ : Level}
+    {a0 : Base}
+    (P : {x : Base} → [ a0 ] ≡ [ x ] → Type ℓ)
+    → P refl
+    → ((p : [ a0 ] ≡ [ A ]) → P p ≃ P (p ∙ patch))
+    -------------------------------------------------------------------
+    → {b : Base} → (q : [ a0 ] ≡ [ b ]) → P q
 
-    β-refl :
-      {a0 : Maybe}
-      {P : {x : Maybe} → [ a0 ] ≡ [ x ] → Type₀}
-      {r : P refl}
-      {e : {x : A} → (p : [ a0 ] ≡ [ Nothing ]) → P p ≃ P (p ∙ sett x)} →
-      Simple-path-ind P r e refl ≡ r
+  β-refl :
+    {ℓ : Level}
+    {a0 : Base}
+    {P : {x : Base} → [ a0 ] ≡ [ x ] → Type ℓ}
+    {r : P refl}
+    {e : (p : [ a0 ] ≡ [ A ]) → P p ≃ P (p ∙ patch)} →
+    path-ind P r e refl ≡ r
 
-    β-path :
-      {a0 : Maybe}
-      {P : {x : Maybe} → [ a0 ] ≡ [ x ] → Type₀}
-      {r : P refl}
-      {e : {x : A} → (p : [ a0 ] ≡ [ Nothing ]) → P p ≃ P (p ∙ sett x)}
-      {q : [ a0 ] ≡ [ Nothing ]} {x : A} →
-      Simple-path-ind P r e (q ∙ (sett x)) ≡ equivFun (e q) (Simple-path-ind P r e q)
+  β-path :
+    {ℓ : Level}
+    {a0 : Base}
+    {P : {x : Base} → [ a0 ] ≡ [ x ] → Type ℓ}
+    {r : P refl}
+    {e : (p : [ a0 ] ≡ [ A ]) → P p ≃ P (p ∙ patch)}
+    {q : [ a0 ] ≡ [ A ]} →
+    path-ind P r e (q ∙ patch) ≡ equivFun (e q) (path-ind P r e q)
 
-  bin-path-ind : {ℓ : Level} → (a0 : Maybe)
-           → (P  : {b c : Maybe} → [ a0 ] ≡ [ b ] → [ a0 ] ≡ [ c ] → Type ℓ)
-           → (P refl refl)
-           → ({x : A} → (p : [ a0 ] ≡ [ Nothing ]) → P refl p ≃ P refl (p ∙ sett x))
-           → ({x : A} (p : [ a0 ] ≡ [ Nothing ]) →
-              ({c : Maybe} (q : [ a0 ] ≡ [ c ]) → P p q) ≃
-              ({c : Maybe} (q : [ a0 ] ≡ [ c ]) → P (p ∙ sett x) q))
-           --------------------------------------------------------------------------
-           → {b : Maybe} → (p : [ a0 ] ≡ [ b ]) → {c : Maybe} → (q : [ a0 ] ≡ [ c ]) → P p q
-  bin-path-ind a0 P r e e' = Simple-path-ind (λ p → ({c : Maybe} → (q : [ a0 ] ≡ [ c ]) → P p q)) ind-helper e'
-    where
-      ind-helper : {c : Maybe} (q : [ a0 ] ≡ [ c ]) → P refl q
-      ind-helper = Simple-path-ind (λ p → P refl p) r e
+Span : Base → Base → Type
+Span x y = Σ[ z ∈ Base ] ([ z ] ≡ [ x ]) × ([ z ] ≡ [ y ])
 
-  -- {-# REWRITE β-refl #-}
-  -- breaks something in src/full/Agda/TypeChecking/Rewriting/NonLinPattern.hs:152
-  -- https://github.com/agda/agda/issues/5589
+Cospan : Base → Base → Type
+Cospan x y = Σ[ n ∈ Base ] ([ x ] ≡ [ n ]) × ([ y ] ≡ [ n ])
 
-  Span : Maybe → Maybe → Type₀
-  Span x y = Σ[ a ∈ Maybe ] ( [ a ] ≡ [ x ] ) × ([ a ] ≡ [ y ])
+span-ind :
+  {ℓ : Level} →
+  {zenith : Base} →
+  (P : {x y : Base} → [ zenith ] ≡ [ x ] → [ zenith ] ≡ [ y ] → Type) →
+  P refl refl →
+  ((p : [ zenith ] ≡ [ A ]) → P refl p ≃ P refl (p ∙ patch)) →
+  ((p : [ zenith ] ≡ [ A ]) → P p refl ≃ P (p ∙ patch) refl) →
+  ((p : [ zenith ] ≡ [ A ]) (q : [ zenith ] ≡ [ A ]) →
+    (P p q ≃ P (p ∙ patch) q)
+    ≃ (P p (q ∙ patch) ≃ P (p ∙ patch) (q ∙ patch))) →
+  -----------------------------------------------
+  {x : Base} → (p : [ zenith ] ≡ [ x ]) → {y : Base} → (q : [ zenith ] ≡ [ y ]) → P p q
+span-ind {ℓ} {zenith} P refl-refl refl-patch patch-refl patch-patch =
+  path-ind (λ p → ({y : Base} → (q : [ zenith ] ≡ [ y ]) → P p q))
+           (path-ind (λ {y} q → P refl q) refl-refl refl-patch)
+           λ p → equivImplicitΠCod (equivΠCod λ q → e p q)
+  where
+  e : (p : [ zenith ] ≡ [ A ]) → {y : Base} → (q : [ zenith ] ≡ [ y ]) → P p q ≃ P (p ∙ patch) q
+  e p = path-ind (λ {y} q → P p q ≃ P (p ∙ patch) q) (patch-refl p) (patch-patch p)
 
-  CoSpan : Maybe → Maybe → Type₀
-  CoSpan x y = Σ[ b ∈ Maybe ] ([ x ] ≡ [ b ]) × ([ y ] ≡ [ b ])
+{-
+: (p : [ zenith ] ≡ [ A ]) →
+({y : Base} (q : [ zenith ] ≡ [ y ]) → P p q) ≃
+({y : Base} (q : [ zenith ] ≡ [ y ]) → P (p ∙ patch) q)
+1. Kanskje det hadde gått å definere merge i dette (litt enklere tilfellet):
+Repo modell: To tilstander A og B, én path do : [A] = [B].
+Merge skal merge do og do til do (altså at kospannet blir B,refl,refl).
 
-  makeCoSpan : {x y : Maybe} → (nadir : Maybe) → (p : [ x ] ≡ [ nadir ]) → (q : [ y ] ≡ [ nadir ]) → CoSpan x y
-  makeCoSpan n p q = n , p , q
-
-  -- massaging the types of equivΠ to fit in my holes
-  lemma-compEquiv : {X : Type} {A B C : X → Type} → ({x : X} → A x ≃ B x)
-                  → ({x : X} → (q : C x) → A x) ≃ ({x : X} → (q : C x) → B x)
-  lemma-compEquiv e = equivImplicitΠCod (equivΠCod λ _ → e)
-
-
-  merge : {z : Maybe} →
-          {x : Maybe} → (p : [ z ] ≡ [ x ]) →
-          {y : Maybe} → (q : [ z ] ≡ [ y ]) →
-          {n : Maybe} → ([ x ] ≡ [ n ]) × ([ y ] ≡ [ n ])
-  merge {Nothing} = bin-path-ind Nothing
-                           (λ {b} {c} p q → ({n : Maybe} → ([ b ] ≡ [ n ]) × ([ c ] ≡ [ n ] )))
-                           r e e'
-    where
-    r : {n : Maybe} → ([ Nothing ] ≡ [ n ]) × ([ Nothing ] ≡ [ n ])
-    r {Nothing} = refl , refl
-    r {Just x} = sett x , sett x
-
-    e-right : {a : A} {x : Maybe} →
-              ([ Nothing ] ≡ [ x ]) × ([ Nothing ] ≡ [ x ]) →
-              ([ Nothing ] ≡ [ x ]) × ([ Just a ] ≡ [ x ])
-    e-right {a} (p , q) = p , sym (sett a) ∙ q
-
-    e-left : {a : A} {x : Maybe} →
-            ([ Nothing ] ≡ [ x ]) × ([ Just a ] ≡ [ x ]) →
-            ([ Nothing ] ≡ [ x ]) × ([ Nothing ] ≡ [ x ])
-    e-left {a} (p , q) = p , sett a ∙ q
-
-    left-inverse : {a : A} {x : Maybe} →
-                   section (e-right {a} {x}) e-left
-    left-inverse {a} (p , q) = (p , sym (sett a) ∙ ((sett a) ∙ q))
-      ≡⟨ ≡-× refl (assoc _ _ _) ⟩ p , (sym (sett a) ∙ (sett a) ) ∙ q
-      ≡⟨ ≡-× refl (cong (λ r → r ∙ q) (lCancel _)) ⟩ p , refl ∙ q
-      ≡⟨ ≡-× refl (sym (lUnit _)) ⟩ (p , q) ∎
-
-    right-inverse : {a : A} {x : Maybe} →
-                    retract (e-right {a} {x}) e-left
-    right-inverse {a} (p , q) = (p , (sett a) ∙ (sym (sett a) ∙ q))
-      ≡⟨ ≡-× refl (assoc _ _ _) ⟩ (p , ((sett a) ∙ (sym (sett a))) ∙ q)
-      ≡⟨ ≡-× refl (cong (λ r → r ∙ q) (rCancel _)) ⟩ (p , refl ∙ q)
-      ≡⟨ ≡-× refl (sym (lUnit _)) ⟩ (p , q) ∎
-
-    e : {x : A} (p : [ Nothing ] ≡ [ Nothing ]) →
-        ({n : Maybe} → ([ Nothing ] ≡ [ n ]) × ([ Nothing ] ≡ [ n ])) ≃
-        ({n : Maybe} → ([ Nothing ] ≡ [ n ]) × ([ Just x ] ≡ [ n ]))
-    e _ = equivImplicitΠCod (isoToEquiv (iso e-right e-left left-inverse right-inverse))
-
-    e'-right : {a : A} {x : Maybe} →
-               ({n : Maybe} → ([ Nothing ] ≡ [ n ]) × ([ x ] ≡ [ n ])) →
-               {n : Maybe} → ([ Just a ] ≡ [ n ]) × ([ x ] ≡ [ n ])
-    e'-right {a} f {n} = (sym (sett a)) ∙ (fst (f {n})) , snd (f {n})
-
-    e'-left : {a : A} {x : Maybe} →
-              ({n : Maybe} → ([ Just a ] ≡ [ n ]) × ([ x ] ≡ [ n ])) →
-              {n : Maybe} → ([ Nothing ] ≡ [ n ]) × ([ x ] ≡ [ n ])
-    e'-left {a} f {n} = (sett a) ∙ (fst (f {n})) , snd (f {n})
-
-    left'-inverse : {a : A} {x : Maybe} →
-                    section (e'-right {a} {x}) e'-left
-    left'-inverse {a} {x} f = implicitFunExt pointwise
-      where
-      pointwise : {n : Maybe} →
-                  PathP (λ _ → ([ Just a ] ≡ [ n ]) × ([ x ] ≡ [ n ]))
-                  (e'-right {a} {x} (e'-left f)) f
-      -- this is a nicer way to do the ×-proofs imo
-      pointwise {n} = ≡-×
-        (sym (sett a) ∙ (sett a) ∙ (fst f)
-          ≡⟨ assoc _ _ _ ⟩ (sym (sett a) ∙ (sett a)) ∙ (fst f)
-          ≡⟨ cong (λ p → p ∙ (fst (f {n}))) (rCancel _) ⟩ refl ∙ (fst f)
-          ≡⟨ sym (lUnit _) ⟩ fst f ∎)
-        refl
-
-    right'-inverse : {a : A} {x : Maybe} →
-                     retract (e'-right {a} {x}) e'-left
-    right'-inverse {a} {x} f = implicitFunExt pointwise
-      where
-      pointwise : {n : Maybe} →
-                  PathP (λ _ → ([ Nothing ] ≡ [ n ]) × ([ x ] ≡ [ n ]))
-                        (e'-left {a} {x} (e'-right f)) f
-      pointwise {n} = ≡-×
-        (sett a ∙ (sym (sett a)) ∙ fst f
-          ≡⟨ assoc _ _ _ ⟩ ((sett a) ∙ (sym (sett a))) ∙ fst f
-          ≡⟨ cong (λ p → p ∙ (fst (f {n}))) (lCancel _) ⟩ refl ∙ fst f
-          ≡⟨ sym (lUnit _) ⟩ fst f ∎)
-        refl
-
-    e' : {x : A} (p : [ Nothing ] ≡ [ Nothing ]) →
-        ({c : Maybe} (q : [ Nothing ] ≡ [ c ]) {n : Maybe} →
-            ([ Nothing ] ≡ [ n ]) × ([ c ] ≡ [ n ]))
-        ≃ ({c : Maybe} (q : [ Nothing ] ≡ [ c ]) {n : Maybe} →
-              ([ Just x ] ≡ [ n ]) × ([ c ] ≡ [ n ]))
-    e' _ = lemma-compEquiv (isoToEquiv (iso e'-right e'-left left'-inverse right'-inverse))
-
-  merge {Just a} = bin-path-ind (Just a)
-    (λ {b} {c} p q → ({n : Maybe} → ([ b ] ≡ [ n ]) × ([ c ] ≡ [ n ] )))
-    r e {!!}
-    where
-    r : {n : Maybe} → ([ Just a ] ≡ [ n ]) × ([ Just a ] ≡ [ n ])
-    r {Nothing} = sym (sett a) , sym (sett a)
-    r {Just x} = (sym (sett a)) ∙ (sett x) , (sym (sett a)) ∙ (sett x)
-
-    e-right : {x : A} {n : Maybe} →
-              ([ Just a ] ≡ [ n ]) × ([ Nothing ] ≡ [ n ]) →
-              ([ Just a ] ≡ [ n ]) × ([ Just x ] ≡ [ n ])
-    e-right {x} (left , right) = left , sym (sett x) ∙ right
-
-    e-left : {x : A} {n : Maybe} →
-             ([ Just a ] ≡ [ n ]) × ([ Just x ] ≡ [ n ]) →
-             ([ Just a ] ≡ [ n ]) × ([ Nothing ] ≡ [ n ])
-    e-left {x} (left , right) = {!!} , {!!}
-
-    e : {x : A} (p : [ Just a ] ≡ [ Nothing ]) →
-        ({n : Maybe} → ([ Just a ] ≡ [ n ]) × ([ Nothing ] ≡ [ n ])) ≃
-        ({n : Maybe} → ([ Just a ] ≡ [ n ]) × ([ Just x ] ≡ [ n ]))
-    e p = equivImplicitΠCod (isoToEquiv (iso e-right e-left {!!} {!!}))
+2. Jeg har en sterk fornemmelse at at induksjonsprinsippet må
+brukes i alle fall tre ganger for å definere en funksjon på spans.
+Skjematisk burde det se ut slik:
+ind (ind (1) (2)) ( … ind  (3) (4) … ) . Hvor 1 er refl–refl caset,
+2 er refl–do og 3 er do–refl og 4 er do–do.
+-}
