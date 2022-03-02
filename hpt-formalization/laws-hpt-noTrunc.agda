@@ -8,15 +8,13 @@ Implementation of the patch theory described in
 module laws-hpt-noTrunc where
 
 open import Data.Fin
-  hiding(_≟_)
+  using(Fin  ; #_ ; zero ; suc)
 open import Data.String
-  hiding (_<_)
+  using(String ; _≟_ ; _==_)
 open import Data.Vec
-  hiding(map)
-open import Data.Vec.Properties
+  using(Vec ; [] ; _∷_ ; _[_]%=_ ; updateAt)
 open import Data.Empty
-open import Data.Bool
-  using (if_then_else_)
+  using(⊥ ; ⊥-elim)
 
 open import Cubical.Core.Everything
   hiding (I)
@@ -32,11 +30,13 @@ open import Cubical.Data.Bool
 open import Cubical.Data.Nat.Order
   hiding(_≟_)
 open import Function.Base
+  using(id ; _∘_)
 open import Relation.Nullary
 open import Relation.Binary
+  using (Decidable)
 
 open import Cubical.Foundations.Everything
-  hiding(_∘_ ; I)
+  hiding(_∘_ ; I ; id)
 
 size : ℕ
 size = 8
@@ -51,10 +51,6 @@ sym≢ : ∀ {ℓ} {A : Set ℓ} → {x y : A}
        → x ≢ y → y ≢ x
 sym≢ x≢y x≡y = ⊥-elim (x≢y (sym x≡y))
 
-apd : {A : Type₀} {B : A → Type₀} → (f : (a : A) → B a) →
-      ∀ {x y : A} → (p : x ≡ y) → PathP (λ i → B (p i)) (f x) (f y)
-apd f p i = cong f p i
-
 data R : Type₀ where
   -- context (point)
   doc : R
@@ -66,12 +62,6 @@ data R : Type₀ where
 
   indep : (s t u v : String) (i j : Fin size) → (i ≢ j)
           → (s ↔ t AT i) ∙ (u ↔ v AT j) ≡ (u ↔ v AT j) ∙ (s ↔ t AT i)
-
-noop-helper : {s1 s2 : String} {j : Fin size} → s1 ≡ s2
-              → (s1 ↔ s2 AT j) ≡ refl
-noop-helper {s1} {s2} {j} s1=s2 =
-  s1 ↔ s2 AT j ≡⟨ cong (λ s → s1 ↔ s AT j) (sym s1=s2) ⟩ (s1 ↔ s1 AT j) ≡⟨ noop s1 j ⟩ refl ∎
-
 
 _=?_ : Decidable _≡p_
 _=?_ = _≟_
@@ -169,10 +159,7 @@ swapatFun-independent i j i≠j = funExt (updateAt-commutes' i j i≠j)
 swapat-independent : {s t u v : String} → {i j : Fin size} →
                      i ≢ j → compEquiv (swapat (u , v) j) (swapat (s , t) i)
                            ≡ compEquiv (swapat (s , t) i) (swapat (u , v) j)
-swapat-independent {s} {t} {u} {v} {i} {j} i≠j =
-  equivEq (compEquiv (swapat (u , v) j) (swapat (s , t) i))
-          (compEquiv (swapat (s , t) i) (swapat (u , v) j))
-          (swapatFun-independent i j i≠j)
+swapat-independent {s} {t} {u} {v} {i} {j} i≠j = equivEq (swapatFun-independent i j i≠j)
 
 GOAL0 : (s t u v : String) → (i j : Fin size) → (i ≢ j)
         → swapatPath (s , t) i ∙ swapatPath (u , v) j
@@ -196,7 +183,7 @@ swapssId {s} {j} = funExt pointwise
                 ≡⟨ []%=id ⟩ id r ∎
 
 swapatIsId : {s : String} {j : Fin size} → swapat (s , s) j ≡ idEquiv repoType
-swapatIsId {s} {j} = equivEq (swapat (s , s) j) (idEquiv repoType) swapssId
+swapatIsId {s} {j} = equivEq swapssId
 
 GOAL1 : (s : String) → (j : Fin size)
         → swapatPath (s , s) j ≡ refl
@@ -212,27 +199,33 @@ I (indep s t u v i j i≢j i₁ i₂) = GOAL0 s t u v i j i≢j i₁ i₂
 
 {-5.3 a simple optimizer to illustrate the use of patch laws-}
 
-t : {s1 s2 : String} {j : Fin size} → (i : Interval) → Σ[ y ∈ R ] y ≡ (s1 ↔ s2 AT j) i
-t {s1} {s2} {j} i with s1 =? s2
-...                  | yes s1=s2 = (reflc i , sym (cong (λ _ → (s1 ↔ s2 AT j) i)
-                                                        (noop-helper {s1} {s2} {j} (ptoc s1=s2))))
-...                  | no  _     = (s1 ↔ s2 AT j) i , refl
+-- gives the noop square explicitly
+noop-helper : {s1 s2 : String} {j : Fin size} → s1 ≡ s2
+              → (s1 ↔ s2 AT j) ≡ refl
+noop-helper {s1} {s2} {j} s1=s2 =
+  s1 ↔ s2 AT j ≡⟨ cong (λ s → s1 ↔ s AT j) (sym s1=s2) ⟩ (s1 ↔ s1 AT j) ≡⟨ noop s1 j ⟩ refl ∎
 
 
-e : {p : doc ≡ doc} → (PathP (λ i → Σ[ y ∈ R ] y ≡ p i) (doc , refl) (doc , refl))
-                      ≡ (Σ[ q ∈ doc ≡ doc ] p ≡ q)
-e {p} = {!!}
-
+result-contractible : (x : R) → isContr (Σ[ y ∈ R ] y ≡ x)
+result-contractible x = (x , refl) , λ (y , p) → ΣPathP (sym p , λ i j → p (~ i ∨ j))
 
 opt : (x : R) → Σ[ y ∈ R ] y ≡ x
 opt doc = (doc , refl)
--- should be (t i), but maybe I need "equality-of-pairs-is-pair-of-equalities (t i)"
-opt ((s1 ↔ s2 AT j) i) = if {!!} then reflc i , (λ k → noop s1 j {!!} {!!}) else {!!}
-opt (noop s i i₁ i₂) = {!!}
-opt (indep s t u v i j x i₁ i₂) = {!!}
+opt ((s1 ↔ s2 AT j) i) with s1 =? s2
+...                       | yes s1=s2 = refl i , λ k → noop-helper {j = j} (ptoc s1=s2) (~ k) i
+...                       | no _ = ((s1 ↔ s2 AT j) i) , refl
+-- these last two *should* be trivial by contractibility
+opt (noop _ _ _ _) = {!!}
+opt (indep _ _ _ _ _ _ _ _ _) = {!!}
 
-optimize :(p : doc ≡ doc) → Σ[ q ∈ (doc ≡ doc) ] p ≡ q
-optimize p = transport e (apd opt p)
+optimize : (p : doc ≡ doc) → Σ[ q ∈ (doc ≡ doc) ] p ≡ q
+optimize p = transport e (cong opt p)
+  where
+  e : (PathP (λ i → Σ[ y ∈ R ] y ≡ p i) (doc , refl) (doc , refl))
+      ≡ (Σ[ q ∈ doc ≡ doc ] p ≡ q)
+  e = {!!}
+  -- "by rules for path-over-path, Σ-types, constant families and path types"
+  -- footnote 6 on p. 9
 
 module testing where
   interp : doc ≡ doc → repoType → repoType

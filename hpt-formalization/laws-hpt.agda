@@ -178,10 +178,7 @@ swapatFun-independent i j i≠j = funExt (updateAt-commutes' i j i≠j)
 swapat-independent : {s t u v : String} → {i j : Fin size} →
                      i ≢ j → compEquiv (swapat (u , v) j) (swapat (s , t) i)
                            ≡ compEquiv (swapat (s , t) i) (swapat (u , v) j)
-swapat-independent {s} {t} {u} {v} {i} {j} i≠j =
-  equivEq (compEquiv (swapat (u , v) j) (swapat (s , t) i))
-          (compEquiv (swapat (s , t) i) (swapat (u , v) j))
-          (swapatFun-independent i j i≠j)
+swapat-independent {s} {t} {u} {v} {i} {j} i≠j = equivEq (swapatFun-independent i j i≠j)
 
 GOAL0 : (s t u v : String) → (i j : Fin size) → (i ≢ j)
         → swapatPath (s , t) i ∙ swapatPath (u , v) j
@@ -205,7 +202,7 @@ swapssId {s} {j} = funExt pointwise
                 ≡⟨ []%=id ⟩ id r ∎
 
 swapatIsId : {s : String} {j : Fin size} → swapat (s , s) j ≡ idEquiv repoType
-swapatIsId {s} {j} = equivEq (swapat (s , s) j) (idEquiv repoType) swapssId
+swapatIsId {s} {j} = equivEq swapssId
 
 GOAL1 : (s : String) → (j : Fin size)
         → swapatPath (s , s) j ≡ refl
@@ -262,15 +259,10 @@ CORRECTGOAL0 s1 s2 j i with s1 =? s2
 
 opt1-correct : (r : R) → r ≡ opt1 r
 opt1-correct doc = refl
-opt1-correct ((s1 ↔ s2 AT j) i₁) = CORRECTGOAL0 s1 s2 j {!!}
-opt1-correct (noop s i i₁ i₂) = CORRECTGOAL0 s s i {!!}
+opt1-correct ((s1 ↔ s2 AT j) i) = CORRECTGOAL0 s1 s2 j {!!}
+opt1-correct (noop s i i₁ i₂) = {!!}
 opt1-correct (indep s t u v i j i≠j i₁ i₂) = λ i₃ → (OPTGOAL1 s t u v i j i≠j {!!} {!!})
 opt1-correct (trunc i i₁ i₂) = {!!}
-{-
-I suspect some cubical magic has to happen here
-might help to draw it out, which is hard on the train..
-
--}
 
 {-
 Attempting the program and prove approach, but running into trouble with e (and also its application)
