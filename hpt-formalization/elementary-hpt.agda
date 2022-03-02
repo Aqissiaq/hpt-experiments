@@ -77,9 +77,6 @@ private
                 → merge (p , q) ≡ (r , s) → p ≡ s × r ≡ q
     pairwise≡ p = cong snd p , cong fst (sym p)
 
-intLoop-sur : (p : Patch) → ∃[ n ] (p ≡ intLoop n)
-intLoop-sur p = equivFun (interp p) 0 , sym (decodeEncode num p)
-
 {-
 with this interpretation, patches commute
 this relies on two facts:
@@ -87,6 +84,10 @@ this relies on two facts:
   2) intLoop is a homomorphism (intLoop-hom from HITs.S¹)
 then we can use +-comm
 -}
+
+intLoop-sur : (p : Patch) → ∃[ n ] (p ≡ intLoop n)
+intLoop-sur p = equivFun (interp p) 0 , sym (decodeEncode num p)
+
 patch-comm : (p q : Patch) → p ∙ q ≡ q ∙ p
 patch-comm p q =
   p ∙ q ≡⟨ uncurry-helper p (intLoop m) q (intLoop n) _∙_ (p-is-n , q-is-m) ⟩ intLoop n ∙ intLoop m
