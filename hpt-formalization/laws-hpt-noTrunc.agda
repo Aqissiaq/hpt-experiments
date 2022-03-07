@@ -30,10 +30,13 @@ open import Cubical.Data.Bool
 open import Cubical.Data.Nat.Order
   hiding(_≟_)
 open import Function.Base
-  using(id ; _∘_)
+  using(id ; _∘_ )
 open import Relation.Nullary
 open import Relation.Binary
   using (Decidable)
+
+open import Cubical.Foundations.Equiv.HalfAdjoint
+  using(congIso)
 
 open import Cubical.Foundations.Everything
   hiding(_∘_ ; I ; id)
@@ -43,6 +46,9 @@ size = 8
 
 repoType : Type₀
 repoType = Vec String size
+
+isContr→≡ : {A B : Type} → isContr A → isContr B → A ≡ B
+isContr→≡ contrA contrB = ua (isoToEquiv (isContr→Iso contrA contrB))
 
 _≢_ : ∀ {ℓ} {A : Set ℓ} → A → A → Set ℓ
 _≢_ x y = x ≡ y → ⊥
@@ -202,30 +208,69 @@ I (indep s t u v i j i≢j i₁ i₂) = GOAL0 s t u v i j i≢j i₁ i₂
 -- gives the noop square explicitly
 noop-helper : {s1 s2 : String} {j : Fin size} → s1 ≡ s2
               → (s1 ↔ s2 AT j) ≡ refl
-noop-helper {s1} {s2} {j} s1=s2 =
-  s1 ↔ s2 AT j ≡⟨ cong (λ s → s1 ↔ s AT j) (sym s1=s2) ⟩ (s1 ↔ s1 AT j) ≡⟨ noop s1 j ⟩ refl ∎
+noop-helper {s1} {s2} {j} s1=s2 = cong (λ s → s ↔ s2 AT j) (s1=s2) ∙ noop s2 j
 
-
-result-contractible : (x : R) → isContr (Σ[ y ∈ R ] y ≡ x)
+result-contractible : {X : Type} → (x : X) → isContr (Σ[ y ∈ X ] y ≡ x)
 result-contractible x = (x , refl) , λ (y , p) → ΣPathP (sym p , λ i j → p (~ i ∨ j))
+
+result-contractible' : {X : Type} → (x : X) → isContr (Σ[ y ∈ X ] x ≡ y)
+result-contractible' x = (x , refl) , λ (y , p) → ΣPathP (p , (λ i j → p (i ∧ j)))
 
 opt : (x : R) → Σ[ y ∈ R ] y ≡ x
 opt doc = (doc , refl)
-opt ((s1 ↔ s2 AT j) i) with s1 =? s2
+opt x@((s1 ↔ s2 AT j) i) with s1 =? s2
 ...                       | yes s1=s2 = refl i , λ k → noop-helper {j = j} (ptoc s1=s2) (~ k) i
-...                       | no _ = ((s1 ↔ s2 AT j) i) , refl
+...                       | no _ = x , refl
 -- these last two *should* be trivial by contractibility
-opt (noop _ _ _ _) = {!!}
+-- but we need endpoints to be *definitionally* equal (possible?)
+opt x@(noop s j i k) with s =? s
+...                     | yes s=s = {!!}
+...                     | no _ = {!!}
 opt (indep _ _ _ _ _ _ _ _ _) = {!!}
 
 optimize : (p : doc ≡ doc) → Σ[ q ∈ (doc ≡ doc) ] p ≡ q
 optimize p = transport e (cong opt p)
   where
-  e : (PathP (λ i → Σ[ y ∈ R ] y ≡ p i) (doc , refl) (doc , refl))
-      ≡ (Σ[ q ∈ doc ≡ doc ] p ≡ q)
-  e = {!!}
   -- "by rules for path-over-path, Σ-types, constant families and path types"
   -- footnote 6 on p. 9
+  e : (PathP (λ i → Σ[ y ∈ R ] y ≡ p i) (doc , refl) (doc , refl))
+      ≡ (Σ[ q ∈ doc ≡ doc ] p ≡ q)
+  e = (PathP (λ i → Σ[ y ∈ R ] y ≡ p i) (doc , refl) (doc , refl))
+      ≡⟨ PathP≡Path (λ i → Σ[ y ∈ R ] y ≡ p i) (doc , refl) (doc , refl) ⟩
+        Path (Σ[ y ∈ R ] y ≡ doc) (transport (λ i → Σ[ y ∈ R ] y ≡ p i) (doc , refl)) (doc , refl)
+      ≡⟨ cong (λ x → Path (Σ[ y ∈ R ] y ≡ doc) x (doc , refl)) β-transport ⟩
+        Path (Σ[ y ∈ R ] y ≡ doc) (doc , p) (doc , refl)
+      ≡⟨ sym ΣPath≡PathΣ ⟩
+        (Σ[ q ∈ doc ≡ doc ] (PathP (λ i → q i ≡ doc) p refl))
+      ≡⟨ Σ-cong-snd (λ q → PathP≡Path (λ i → q i ≡ doc) p refl) ⟩
+        (Σ[ q ∈ doc ≡ doc ] (transport (λ i → q i ≡ doc) p) ≡ refl)
+      ≡⟨ Σ-cong-snd (λ q → cong (λ x → x ≡ refl) (β-transport' q)) ⟩
+        (Σ[ q ∈ doc ≡ doc ] (sym q ∙ p) ≡ refl)
+      ≡⟨ Σ-cong-snd (λ q → lemma q p) ⟩
+        (Σ[ q ∈ doc ≡ doc ] p ≡ q) ∎
+    where
+    -- dubiously 2.11.2 from The Book
+    β-transport : (transport (λ i → Σ[ y ∈ R ] y ≡ p i) (doc , refl)) ≡ (doc , p)
+    β-transport = {!!}
+
+    β-transport' : (q : doc ≡ doc) → (transport (λ i → q i ≡ doc) p) ≡ sym q ∙ p
+    β-transport' q = {!!}
+
+    lemma : {X : Type} {x y : X} →
+            (f g : x ≡ y) →
+            (sym f ∙ g ≡ refl) ≡ (g ≡ f)
+    lemma f g = sym f ∙ g ≡ refl
+      ≡⟨ cong (λ x → (sym f ∙ g) ≡ x) (sym (lCancel f)) ⟩
+        (sym f) ∙ g ≡ (sym f) ∙ f
+      -- this is the key step: the rest is just groupoidLaw shuffling
+      ≡⟨ ua (compl≡Equiv f (sym f ∙ g) (sym f ∙ f)) ⟩
+        (f ∙ (sym f ∙ g)) ≡ f ∙ (sym f ∙ f)
+      ≡⟨ cong₂ (λ a b → a ≡ b) (assoc f (sym f) g) (assoc f (sym f) f) ⟩
+        (f ∙ sym f) ∙ g ≡ (f ∙ sym f) ∙ f
+      ≡⟨ cong₂ (λ a b → (a ∙ g) ≡ b ∙ f) (rCancel f) (rCancel f) ⟩
+        refl ∙ g ≡ refl ∙ f
+      ≡⟨ cong₂ (λ a b → a ≡ b) (sym (lUnit g)) (sym (lUnit f)) ⟩
+        g ≡ f ∎
 
 module testing where
   interp : doc ≡ doc → repoType → repoType
