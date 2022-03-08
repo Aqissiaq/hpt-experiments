@@ -35,8 +35,7 @@ open import Relation.Nullary
 open import Relation.Binary
   using (Decidable)
 
-open import Cubical.Foundations.Equiv.HalfAdjoint
-  using(congIso)
+open import Cubical.Foundations.HLevels
 
 open import Cubical.Foundations.Everything
   hiding(_∘_ ; I ; id)
@@ -206,9 +205,9 @@ I (indep s t u v i j i≢j i₁ i₂) = GOAL0 s t u v i j i≢j i₁ i₂
 {-5.3 a simple optimizer to illustrate the use of patch laws-}
 
 -- gives the noop square explicitly
-noop-helper : {s1 s2 : String} {j : Fin size} → s1 ≡ s2
+noop-helper : {j : Fin size} {s1 s2 : String} → s1 ≡ s2
               → (s1 ↔ s2 AT j) ≡ refl
-noop-helper {s1} {s2} {j} s1=s2 = cong (λ s → s ↔ s2 AT j) (s1=s2) ∙ noop s2 j
+noop-helper {j} {s1} {s2} s1=s2 = cong (λ s → s ↔ s2 AT j) (s1=s2) ∙ noop s2 j
 
 result-contractible : {X : Type} → (x : X) → isContr (Σ[ y ∈ X ] y ≡ x)
 result-contractible x = (x , refl) , λ (y , p) → ΣPathP (sym p , λ i j → p (~ i ∨ j))
@@ -216,17 +215,36 @@ result-contractible x = (x , refl) , λ (y , p) → ΣPathP (sym p , λ i j → 
 result-contractible' : {X : Type} → (x : X) → isContr (Σ[ y ∈ X ] x ≡ y)
 result-contractible' x = (x , refl) , λ (y , p) → ΣPathP (p , (λ i j → p (i ∧ j)))
 
+result-isSet : (x : R) → isSet (Σ[ y ∈ R ] y ≡ x)
+result-isSet x = isProp→isSet (isContr→isProp (result-contractible x))
+
+{- failed attempt that shows I *have* to do this by hand
+R-contr-elim : {P : R → Type} →
+  (∀ x → isContr (P x)) →
+  P doc →
+  (∀ s1 s2 j i → P ((s1 ↔ s2 AT j) i)) →
+  ∀ x → P x
+R-contr-elim contr Pdoc Pswap doc = Pdoc
+R-contr-elim contr Pdoc Pswap ((s1 ↔ s2 AT j) i) = Pswap s1 s2 j i
+R-contr-elim contr Pdoc Pswap (noop s i i₁ i₂) = {!!}
+R-contr-elim contr Pdoc Pswap (indep s t u v i j x i₁ i₂) = {!!}
+-}
+
 opt : (x : R) → Σ[ y ∈ R ] y ≡ x
 opt doc = (doc , refl)
 opt x@((s1 ↔ s2 AT j) i) with s1 =? s2
-...                       | yes s1=s2 = refl i , λ k → noop-helper {j = j} (ptoc s1=s2) (~ k) i
+...                       | yes s1=s2 = refl {x = doc} i , λ k → noop-helper {j} (ptoc s1=s2) (~ k) i
 ...                       | no _ = x , refl
 -- these last two *should* be trivial by contractibility
 -- but we need endpoints to be *definitionally* equal (possible?)
-opt x@(noop s j i k) with s =? s
-...                     | yes s=s = {!!}
-...                     | no _ = {!!}
-opt (indep _ _ _ _ _ _ _ _ _) = {!!}
+-- pre-defined HITs have some useful lemmas/elim rules
+opt (noop s j i k) = isOfHLevel→isOfHLevelDep 2 result-isSet
+  (doc , refl) (doc , refl) (cong opt (s ↔ s AT j)) (cong opt refl) (noop s j) i k
+-- ↑ this is adapted from HITs.SetQuotients.Properties.elim, but I do not understand it
+-- the same approach for indep does not pass termination checking
+opt (indep s t u v j j' j≠j' i k) = {!!}
+-- honestly I should read all of chapter 6 closely
+
 
 optimize : (p : doc ≡ doc) → Σ[ q ∈ (doc ≡ doc) ] p ≡ q
 optimize p = transport e (cong opt p)
