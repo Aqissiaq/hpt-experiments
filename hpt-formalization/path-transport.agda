@@ -32,3 +32,23 @@ module _ {A B : Type ℓ} {a a' : A} where
     p=refl = subst (λ y → f y ≡ g y) refl q
            ≡⟨ substRefl {B = (λ y → f y ≡ g y)} q ⟩ q
            ≡⟨ (rUnit q) ∙ lUnit (q ∙ refl) ⟩ refl {x = f a} ∙ q ∙ refl {x = g a} ∎
+
+-- 2.11.2 special cases
+module _ {A : Type ℓ} {a x1 x2 : A} (p : x1 ≡ x2) where
+  a=x : (q : a ≡ x1) → subst (λ x → a ≡ x) p q ≡ q ∙ p
+  a=x q = subst (λ x → a ≡ x) p q
+    ≡⟨ transport-in-paths (λ _ → a) (λ x → x) p q ⟩
+      sym (cong (λ _ → a) p) ∙ q ∙ cong (λ x → x) p
+    ≡⟨ assoc (λ _ → a) q p ⟩
+     (refl ∙ q) ∙ p
+    ≡⟨ cong (_∙ p) (sym (lUnit q)) ⟩ q ∙ p ∎
+
+  x=a : (q : x1 ≡ a) → subst (λ x → x ≡ a) p q ≡ sym p ∙ q
+  x=a q = subst (λ x → x ≡ a) p q
+    ≡⟨ transport-in-paths (λ x → x) (λ _ → a) p q ⟩
+      sym (cong (λ x → x) p) ∙ q ∙ cong (λ _ → a) p
+    ≡⟨ assoc (sym p) q refl ⟩ (sym p ∙ q) ∙ refl
+    ≡⟨ sym (rUnit (sym p ∙ q))⟩ sym p ∙ q ∎
+
+  x=x : (q : x1 ≡ x1) → subst (λ x → x ≡ x) p q ≡ sym p ∙ q ∙ p
+  x=x q = transport-in-paths (λ x → x) (λ x → x) p q
