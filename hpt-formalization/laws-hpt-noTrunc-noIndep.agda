@@ -5,7 +5,7 @@ Implementation of the patch theory described in
 
 -}
 
-module laws-hpt-noTrunc where
+module laws-hpt-noTrunc-noIndep where
 
 open import Data.Fin
   using(Fin  ; #_ ; zero ; suc)
@@ -42,11 +42,6 @@ open import path-transport
 open import Cubical.Foundations.Everything
   hiding(_∘_ ; I ; id)
 
--- https://github.com/agda/cubical/blob/9f7f8935dc513679a58fe9c98e07963a185d726e/Cubical/Foundations/Transport.agda
-transportComposite : ∀ {ℓ} {A B C : Type ℓ} (p : A ≡ B) (q : B ≡ C) (x : A)
-                     → transport (p ∙ q) x ≡ transport q (transport p x)
-transportComposite = substComposite (λ D → D)
-
 size : ℕ
 size = 8
 
@@ -71,9 +66,6 @@ data R : Type₀ where
 
   --patch laws (squares)
   noop : (s : String) (i : Fin size) → s ↔ s AT i ≡ refl
-
-  indep : (s t u v : String) (i j : Fin size) → (i ≢ j)
-          → (s ↔ t AT i) ∙ (u ↔ v AT j) ≡ (u ↔ v AT j) ∙ (s ↔ t AT i)
 
 _=?_ : Decidable _≡p_
 _=?_ = _≟_
@@ -206,7 +198,6 @@ I : R → Type₀
 I doc = repoType
 I ((s1 ↔ s2 AT j) i) = swapatPath (s1 , s2) j i
 I (noop s j i₁ i₂) = GOAL1 s j i₁ i₂
-I (indep s t u v i j i≢j i₁ i₂) = GOAL0 s t u v i j i≢j i₁ i₂
 
 
 {-5.3 a simple optimizer to illustrate the use of patch laws-}
@@ -219,45 +210,21 @@ noop-helper {j} {s1} {s2} s1=s2 = cong (λ s → s ↔ s2 AT j) (s1=s2) ∙ noop
 result-contractible : {X : Type} → (x : X) → isContr (Σ[ y ∈ X ] y ≡ x)
 result-contractible x = (x , refl) , λ (y , p) → ΣPathP (sym p , λ i j → p (~ i ∨ j))
 
-result-contractible' : {X : Type} → (x : X) → isContr (Σ[ y ∈ X ] x ≡ y)
-result-contractible' x = (x , refl) , λ (y , p) → ΣPathP (p , (λ i j → p (i ∧ j)))
-
 result-isSet : (x : R) → isSet (Σ[ y ∈ R ] y ≡ x)
 result-isSet x = isProp→isSet (isContr→isProp (result-contractible x))
-
-{- failed attempt that shows I *have* to do this by hand
-R-contr-elim : {P : R → Type} →
-  (∀ x → isContr (P x)) →
-  P doc →
-  (∀ s1 s2 j i → P ((s1 ↔ s2 AT j) i)) →
-  ∀ x → P x
-R-contr-elim contr Pdoc Pswap doc = Pdoc
-R-contr-elim contr Pdoc Pswap ((s1 ↔ s2 AT j) i) = Pswap s1 s2 j i
-R-contr-elim contr Pdoc Pswap (noop s i i₁ i₂) = {!!}
-R-contr-elim contr Pdoc Pswap (indep s t u v i j x i₁ i₂) = {!!}
--}
 
 opt : (x : R) → Σ[ y ∈ R ] y ≡ x
 opt doc = (doc , refl)
 opt x@((s1 ↔ s2 AT j) i) with s1 =? s2
 ...                       | yes s1=s2 = refl {x = doc} i , λ k → noop-helper {j} (ptoc s1=s2) (~ k) i
 ...                       | no _ = x , refl
--- these last two *should* be trivial by contractibility
--- but we need endpoints to be *definitionally* equal (possible?)
--- pre-defined HITs have some useful lemmas/elim rules
 opt (noop s j i k) = isOfHLevel→isOfHLevelDep 2 result-isSet
   (doc , refl) (doc , refl) (cong opt (s ↔ s AT j)) (cong opt refl) (noop s j) i k
--- ↑ this is adapted from HITs.SetQuotients.Properties.elim, but I do not understand it
--- the same approach for indep does not pass termination checking
-opt (indep s t u v j j' j≠j' i k) = {!!}
--- honestly I should read all of chapter 6 closely
 
 
 optimize : (p : doc ≡ doc) → Σ[ q ∈ (doc ≡ doc) ] p ≡ q
 optimize p = transport e (cong opt p)
   where
-  -- "by rules for path-over-path, Σ-types, constant families and path types"
-  -- footnote 6 on p. 9
   e : (PathP (λ i → Σ[ y ∈ R ] y ≡ p i) (doc , refl) (doc , refl))
       ≡ (Σ[ q ∈ doc ≡ doc ] p ≡ q)
   e = (PathP (λ i → Σ[ y ∈ R ] y ≡ p i) (doc , refl) (doc , refl))
@@ -321,6 +288,12 @@ module testing where
 
   result : repoType
   result = (interp testPatch) bigBreakfast
+
+  optTestPatch : doc ≡ doc
+  optTestPatch = fst (optimize testPatch)
+
+  optResult : repoType
+  optResult = (interp optTestPatch) bigBreakfast
 
   -- works as expected
   resultOp : repoType
