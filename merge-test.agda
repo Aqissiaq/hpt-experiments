@@ -100,28 +100,23 @@ Merge skal merge do og do til do (altså at kospannet blir B,refl,refl).
 -}
 
 -- postulating this is basically like truncating the repo type, I guess
--- maybe it's provable tho
+-- maybe it's provable tho ... or maybe not
 patches-contractible : ∀ x y →
                      isContr ([ x ] ≡ [ y ])
-patches-contractible A A = refl , {!!}
+patches-contractible A A = refl , {!lid-unique!}
 patches-contractible A B = patch , {!!}
 patches-contractible B A = (sym patch) , {!!}
 patches-contractible B B = refl , {!!}
 
-from-Contraction : {X : Type} →
-                   isContr X →
-                   (x y : X) →
-                   x ≡ y
-from-Contraction = isContr→isProp
 merge : ∀ x y z →
         [ z ] ≡ [ x ] →
         [ z ] ≡ [ y ] →
         Cospan x y
 merge x y z left right = span-ind (λ {x'} {y'} _ _ → Cospan x' y')
                                   (z , refl , refl)
-                                  (λ p → left-refl p)
-                                  (λ q → right-refl q)
-                                  {!!}
+                                  left-refl
+                                  right-refl
+                                  patch-patch
                          left right
       where
       left-refl : [ z ] ≡ [ A ] → Cospan z A ≃ Cospan z B
@@ -182,11 +177,14 @@ merge x y z left right = span-ind (λ {x'} {y'} _ _ → Cospan x' y')
       patch-patch p q = isoToEquiv (iso {!!} {!!} {!!} {!!})
         where
         ϕ : Cospan A A ≃ Cospan B A → Cospan A B ≃ Cospan B B
-        ϕ = EquivJ (λ X e → {!!}) {!!}
+        ϕ = {!!}
 
-      {-
-      these are both equivalences IF [ x ] ≡ [ y ] is contractible for each x and y, which is kinda what we're thinking
-      -}
+-- possible ways to define this function (tho neither is very convenient)
+-- elimEquivFun : {A B : Type ℓ} (P : (A : Type ℓ) → (A → B) → Type ℓ') →
+--                (r : P B (idfun B)) → (e : A ≃ B) → P A (e .fst)
+
+-- EquivJ : {A B : Type ℓ} (P : (A : Type ℓ) → (e : A ≃ B) → Type ℓ') →
+--          (r : P B (idEquiv B)) → (e : A ≃ B) → P A e
 
 
 {-
