@@ -280,25 +280,23 @@ module testing where
                             ("toast" ∷
                               ("regret" ∷ [])))))))
 
-  -- gives a HUGE term
+  nopPatch : doc ≡ doc
+  nopPatch = ("nop" ↔ "nop" AT (# 0))
+
+  swapPatch : doc ≡ doc
+  swapPatch = "eggs" ↔ "potetsalat" AT (# 0)
+
   testPatch : doc ≡ doc
-  testPatch = op ∙ nop ∙ nop ∙ nop
-    where op = "eggs" ↔ "potetsalat" AT (# 0)
-          nop = "nop" ↔ "nop" AT (# 4)
-
-  result : repoType
-  result = (interp testPatch) bigBreakfast
-
-  optTestPatch : doc ≡ doc
-  optTestPatch = fst (optimize testPatch)
-
-  optResult : repoType
-  optResult = (interp optTestPatch) bigBreakfast
+  testPatch = nopPatch ∙ swapPatch ∙ nopPatch
 
   -- works as expected
   resultOp : repoType
-  resultOp = (interp ("eggs" ↔ "potetsalat" AT (# 0))) bigBreakfast
+  resultOp = interp swapPatch bigBreakfast
 
   -- works as expected
   resultNop : repoType
-  resultNop = (interp ("nop" ↔ "nop" AT (# 0))) bigBreakfast
+  resultNop = interp nopPatch bigBreakfast
+
+  -- gives a HUGE term
+  result : repoType
+  result = interp testPatch bigBreakfast

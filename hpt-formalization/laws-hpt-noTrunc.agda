@@ -243,15 +243,25 @@ opt x@((s1 ↔ s2 AT j) i) with s1 =? s2
 ...                       | yes s1=s2 = refl {x = doc} i , λ k → noop-helper {j} (ptoc s1=s2) (~ k) i
 ...                       | no _ = x , refl
 -- these last two *should* be trivial by contractibility
--- but we need endpoints to be *definitionally* equal (possible?)
--- pre-defined HITs have some useful lemmas/elim rules
+-- but we need endpoints to be *definitionally* equal
 opt (noop s j i k) = isOfHLevel→isOfHLevelDep 2 result-isSet
   (doc , refl) (doc , refl) (cong opt (s ↔ s AT j)) (cong opt refl) (noop s j) i k
--- ↑ this is adapted from HITs.SetQuotients.Properties.elim, but I do not understand it
--- the same approach for indep does not pass termination checking
-opt (indep s t u v j j' j≠j' i k) = {!!}
--- honestly I should read all of chapter 6 closely
-
+-- ↑ this is adapted from HITs.SetQuotients.Properties.elim
+-- the same approach for indep (correctly) does not pass termination checking
+-- (and fuel doesn't help because it there is no reasonable base case)
+opt x@(indep s t u v j j' j≠j' i k) = opt-with-fuel 1 x
+  where
+  opt-with-fuel : ℕ → (x : R) → Σ[ y ∈ R ] y ≡ x
+  opt-with-fuel _ doc = opt doc
+  opt-with-fuel _ x@((s1 ↔ s2 AT i) i₁) = opt x
+  opt-with-fuel _ x@(noop s j i k) = isOfHLevel→isOfHLevelDep 2 result-isSet
+    (doc , refl) (doc , refl) (cong opt (s ↔ s AT j)) (cong opt refl) (noop s j) i k
+  opt-with-fuel zero (indep s t u v j j' j≠j' i k) = {!!}
+  opt-with-fuel (suc n) (indep s t u v j j' j≠j' i k) = isOfHLevel→isOfHLevelDep 2 result-isSet
+    (doc , refl) (doc , refl)
+    (cong (opt-with-fuel n) ((s ↔ t AT j) ∙ (u ↔ v AT j')))
+    (cong (opt-with-fuel n) ((u ↔ v AT j') ∙ (s ↔ t AT j)))
+    (indep s t u v j j' j≠j') i k
 
 optimize : (p : doc ≡ doc) → Σ[ q ∈ (doc ≡ doc) ] p ≡ q
 optimize p = transport e (cong opt p)
@@ -313,19 +323,23 @@ module testing where
                             ("toast" ∷
                               ("regret" ∷ [])))))))
 
-  -- gives a HUGE term
-  testPatch : doc ≡ doc
-  testPatch = op ∙ nop ∙ nop ∙ nop
-    where op = "eggs" ↔ "potetsalat" AT (# 0)
-          nop = "nop" ↔ "nop" AT (# 4)
+  nopPatch : doc ≡ doc
+  nopPatch = ("nop" ↔ "nop" AT (# 0))
 
-  result : repoType
-  result = (interp testPatch) bigBreakfast
+  swapPatch : doc ≡ doc
+  swapPatch = "eggs" ↔ "potetsalat" AT (# 0)
+
+  testPatch : doc ≡ doc
+  testPatch = nopPatch ∙ swapPatch ∙ nopPatch
 
   -- works as expected
   resultOp : repoType
-  resultOp = (interp ("eggs" ↔ "potetsalat" AT (# 0))) bigBreakfast
+  resultOp = interp swapPatch bigBreakfast
 
   -- works as expected
   resultNop : repoType
-  resultNop = (interp ("nop" ↔ "nop" AT (# 0))) bigBreakfast
+  resultNop = interp nopPatch bigBreakfast
+
+  -- gives a HUGE term
+  result : repoType
+  result = interp testPatch bigBreakfast
