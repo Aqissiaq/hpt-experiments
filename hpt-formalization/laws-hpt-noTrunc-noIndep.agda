@@ -38,6 +38,7 @@ open import Relation.Binary
 open import Cubical.Foundations.HLevels
 
 open import path-transport
+  renaming (x=a to path-transport-lemma)
 
 open import Cubical.Foundations.Everything
   hiding(_∘_ ; I ; id)
@@ -47,9 +48,6 @@ size = 8
 
 repoType : Type₀
 repoType = Vec String size
-
-isContr→≡ : {A B : Type} → isContr A → isContr B → A ≡ B
-isContr→≡ contrA contrB = ua (isoToEquiv (isContr→Iso contrA contrB))
 
 _≢_ : ∀ {ℓ} {A : Set ℓ} → A → A → Set ℓ
 _≢_ x y = x ≡ y → ⊥
@@ -112,9 +110,7 @@ permuteTwice {s} {t} = funExt permuteTwice'
 
 []%=id : ∀ {n} {v : Vec String n} {j : Fin n} → v [ j ]%= id ≡ v
 []%=id {n} {x ∷ xs} {zero}  = refl
-[]%=id {n} {x ∷ xs} {suc j} = (x ∷ xs) [ suc j ]%= id
-                         ≡⟨ refl ⟩ x ∷ updateAt j id xs
-                         ≡⟨ cong (λ tail → x ∷ tail) []%=id ⟩ x ∷ xs ∎
+[]%=id {n} {x ∷ xs} {suc j} = cong (λ tail → x ∷ tail) []%=id
 
 []%=twice : ∀ {n} {A : Type₀} (f : A → A) (v : Vec A n) (i : Fin n)
             → v [ i ]%= f [ i ]%= f ≡ v [ i ]%= f ∘ f
@@ -168,12 +164,10 @@ swapat-independent {s} {t} {u} {v} {i} {j} i≠j = equivEq (swapatFun-independen
 GOAL0 : (s t u v : String) → (i j : Fin size) → (i ≢ j)
         → swapatPath (s , t) i ∙ swapatPath (u , v) j
         ≡ swapatPath (u , v) j ∙ swapatPath (s , t) i
-GOAL0 s t u v i j i≠j = swapatPath (s , t) i ∙ swapatPath (u , v) j
-                        ≡⟨ refl ⟩ ua p1 ∙ ua p2
+GOAL0 s t u v i j i≠j = ua p1 ∙ ua p2
                         ≡⟨ sym (uaCompEquiv p1 p2) ⟩ ua (compEquiv p1 p2)
                         ≡⟨ cong ua (swapat-independent (sym≢ i≠j)) ⟩ ua (compEquiv p2 p1)
-                        ≡⟨ uaCompEquiv p2 p1 ⟩ ua p2 ∙ ua p1
-                        ≡⟨ refl ⟩ swapatPath (u , v) j ∙ swapatPath (s , t) i ∎
+                        ≡⟨ uaCompEquiv p2 p1 ⟩ ua p2 ∙ ua p1 ∎
       where
         p1 = swapat (s , t) i
         p2 = swapat (u , v) j
@@ -211,7 +205,7 @@ result-contractible : {X : Type} → (x : X) → isContr (Σ[ y ∈ X ] y ≡ x)
 result-contractible x = (x , refl) , λ (y , p) → ΣPathP (sym p , λ i j → p (~ i ∨ j))
 
 result-isSet : (x : R) → isSet (Σ[ y ∈ R ] y ≡ x)
-result-isSet x = isProp→isSet (isContr→isProp (result-contractible x))
+result-isSet = isProp→isSet ∘ isContr→isProp ∘ result-contractible
 
 opt : (x : R) → Σ[ y ∈ R ] y ≡ x
 opt doc = (doc , refl)
@@ -236,20 +230,11 @@ optimize p = transport e (cong opt p)
         (Σ[ q ∈ doc ≡ doc ] (PathP (λ i → q i ≡ doc) p refl))
       ≡⟨ Σ-cong-snd (λ q → PathP≡Path (λ i → q i ≡ doc) p refl) ⟩
         (Σ[ q ∈ doc ≡ doc ] (transport (λ i → q i ≡ doc) p) ≡ refl)
-      ≡⟨ Σ-cong-snd (λ q → cong (λ x → x ≡ refl) (β-transport q)) ⟩
+      ≡⟨ Σ-cong-snd (λ q → cong (λ x → x ≡ refl) (path-transport-lemma q p)) ⟩
         (Σ[ q ∈ doc ≡ doc ] (sym q ∙ p) ≡ refl)
       ≡⟨ Σ-cong-snd (λ q → lemma q p) ⟩
         (Σ[ q ∈ doc ≡ doc ] p ≡ q) ∎
     where
-    -- lemma 2.11.2 (2) from The Book
-    β-transport : (q : doc ≡ doc) → (transport (λ i → q i ≡ doc) p) ≡ sym q ∙ p
-    β-transport q = (transport (λ i → q i ≡ doc) p)
-      ≡⟨ transport-in-paths (λ x → x) (λ _ → doc) q p ⟩
-        sym (cong (λ x → x) q) ∙ p ∙ (cong (λ _ → doc) q)
-      ≡⟨ cong₂ {x = q} (λ a b → sym a ∙ p ∙ b) refl refl ⟩ (sym q) ∙ p ∙ refl
-      ≡⟨ cong (λ a → sym q ∙ a) (sym (rUnit p)) ⟩ sym q ∙ p ∎
-
-
     lemma : {X : Type} {x y : X} →
             (f g : x ≡ y) →
             (sym f ∙ g ≡ refl) ≡ (g ≡ f)
@@ -267,8 +252,14 @@ optimize p = transport e (cong opt p)
         g ≡ f ∎
 
 module testing where
-  interp : doc ≡ doc → repoType → repoType
-  interp p = equivFun (pathToEquiv (cong I p))
+  interp : doc ≡ doc → repoType ≃ repoType
+  interp p = pathToEquiv (cong I p)
+
+  apply : doc ≡ doc → repoType → repoType
+  apply p x = equivFun (interp p) x
+
+  optimize' : doc ≡ doc → doc ≡ doc
+  optimize' p = fst (optimize p)
 
   bigBreakfast : repoType
   bigBreakfast = "eggs" ∷
@@ -291,12 +282,20 @@ module testing where
 
   -- works as expected
   resultOp : repoType
-  resultOp = interp swapPatch bigBreakfast
+  resultOp = apply swapPatch bigBreakfast
 
   -- works as expected
   resultNop : repoType
-  resultNop = interp nopPatch bigBreakfast
+  resultNop = apply nopPatch bigBreakfast
 
-  -- gives a HUGE term
+  -- gives HUGE terms
+  -- and I DO NOT understand
+  -- the transp looks to be from pathToEquiv (specifically the f)
+  resultComp : repoType
+  resultComp = apply (refl ∙ swapPatch) bigBreakfast
+
+  resultOpt : repoType
+  resultOpt = apply (optimize' (nopPatch ∙ swapPatch)) bigBreakfast
+
   result : repoType
-  result = interp testPatch bigBreakfast
+  result = apply testPatch bigBreakfast

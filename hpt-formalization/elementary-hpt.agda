@@ -110,3 +110,19 @@ reconcile {f1} {f2} {g1} {g2} p =
   f1 ∙ g1 ≡⟨ uncurry-helper f1 f2 g1 g2 _∙_ (pairwise≡ p) ⟩ g2 ∙ f2
           ≡⟨ patch-comm g2 f2 ⟩
   f2 ∙ g2 ∎
+
+nopPatch : Patch
+nopPatch = refl
+
+succPatch : Patch
+succPatch = add1
+
+invSuccPatch : Patch
+invSuccPatch = sym add1
+
+compPatch : Patch
+compPatch = succPatch ∙ invSuccPatch
+
+apply : Patch → ℤ → ℤ
+apply p n = equivFun (interp p) n
+
