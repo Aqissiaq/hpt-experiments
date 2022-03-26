@@ -270,6 +270,15 @@ module testing where
                           ("sausage" ∷
                             ("toast" ∷
                               ("regret" ∷ [])))))))
+  swapped : repoType
+  swapped = "potetsalat" ∷
+            ("bacon" ∷
+              ("hashed brown" ∷
+                ("baked beans" ∷
+                  ("another hashed brown" ∷
+                    ("sausage" ∷
+                      ("toast" ∷
+                        ("regret" ∷ [])))))))
 
   nopPatch : doc ≡ doc
   nopPatch = ("nop" ↔ "nop" AT (# 0))
