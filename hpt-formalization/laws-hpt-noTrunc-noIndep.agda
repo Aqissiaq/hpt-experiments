@@ -289,22 +289,43 @@ module testing where
   testPatch : doc ≡ doc
   testPatch = nopPatch ∙ swapPatch ∙ nopPatch
 
-  -- works as expected
   resultOp : repoType
   resultOp = apply swapPatch bigBreakfast
 
-  -- works as expected
   resultNop : repoType
   resultNop = apply nopPatch bigBreakfast
 
-  -- gives HUGE terms
-  -- and I DO NOT understand
-  -- the transp looks to be from pathToEquiv (specifically the f)
   resultComp : repoType
   resultComp = apply (refl ∙ swapPatch) bigBreakfast
 
   resultOpt : repoType
   resultOpt = apply (optimize' (nopPatch ∙ swapPatch)) bigBreakfast
 
-  result : repoType
-  result = apply testPatch bigBreakfast
+{- All of these give terms that do not completely reduce
+
+Problem appears to be: https://github.com/agda/agda/issues/3733
+"Proper support for inductive families in Cubical Agda"
+
+In particular "transp and hcomp do not compute for inductive families" (https://github.com/agda/cubical/pull/57#issuecomment-461174095)
+
+See also section 3.2.4 (p. 24) of https://staff.math.su.se/anders.mortberg/papers/cubicalagda2.pdf
+
+However, we *can* show some results using transportRefl...
+-}
+
+  _ : resultOp ≡ swapped
+  _ = transportRefl swapped
+
+  _ : resultNop ≡ bigBreakfast
+  _ = transportRefl bigBreakfast
+
+-- ... but this appears to hang
+  -- _ : resultOp ≡ resultOpt
+  -- _ = transportRefl swapped
+
+-- we can do this, but it's not very enlightening
+  _ : resultOp ≡ resultComp
+  _ = cong (λ p → apply p bigBreakfast) (lUnit swapPatch)
+
+  _ : resultOp ≡ resultOpt
+  _ = cong (λ p → apply p bigBreakfast) ((lUnit swapPatch) ∙ (snd (optimize _))
