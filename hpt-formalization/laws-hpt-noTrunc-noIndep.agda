@@ -328,4 +328,4 @@ However, we *can* show some results using transportRefl...
   _ = cong (λ p → apply p bigBreakfast) (lUnit swapPatch)
 
   _ : resultOp ≡ resultOpt
-  _ = cong (λ p → apply p bigBreakfast) ((lUnit swapPatch) ∙ (snd (optimize _))
+  _ = cong (λ p → apply p bigBreakfast) ((lUnit swapPatch) ∙ (snd (optimize _)))

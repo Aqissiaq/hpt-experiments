@@ -1,11 +1,12 @@
-{-# OPTIONS --cubical --rewriting #-}
+{-# OPTIONS --cubical --safe #-}
 {-
 Implementing Theorem 2.11.3 from the book because I need it
 -}
 
 module path-transport where
 
-open import Cubical.Foundations.Everything
+open import Cubical.Foundations.Prelude
+open import Cubical.Foundations.Function using (_∘_)
 open import Cubical.Foundations.GroupoidLaws
 
 private
@@ -17,8 +18,10 @@ module _ {A B : Type ℓ} {a a' : A} where
   -- Lemma 2.3.10
   transport-comp : (f : A → B) → (P : B → Type ℓ') → (p : a ≡ a') → (u : P (f a)) →
     subst (P ∘ f) p u ≡ subst P (cong f p) u
-  transport-comp f P p u = J (λ x q → (subst (P ∘ f) q u) ≡ (subst P (cong f q) u))
-    (substRefl {B = P ∘ f} u ∙ sym (substRefl {B = P} u)) p
+  transport-comp f P p u = refl
+  -- J-rule style proof, which I guess was good practice lol
+  -- J (λ x q → (subst (P ∘ f) q u) ≡ (subst P (cong f q) u))
+  --   (substRefl {B = P ∘ f} u ∙ sym (substRefl {B = P} u)) p
 
   -- Theorem 2.11.3
   transport-in-paths : (f g : A → B) → (p : a ≡ a') (q : f a ≡ g a) →
