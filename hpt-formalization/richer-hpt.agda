@@ -17,11 +17,16 @@ open import Cubical.Foundations.Isomorphism
 open import Cubical.Data.Nat
   hiding(_+_)
 open import Cubical.Data.Vec
+open import Cubical.Data.Equality
+  using (reflp ; _≡p_)
 
--- open import Cubical.Data.Equality
--- open import Cubical.Data.Empty
---   renaming(rec to ⊥-elim)
-
+open import Relation.Nullary
+  using(¬_)
+open import Relation.Binary.PropositionalEquality.Core
+  using(_≢_ ; ≢-sym)
+import Data.Nat.Base as Nat
+import Data.Nat.Properties as NatP
+open import Data.Empty
 open import Data.Fin
 open import Data.Fin.Properties
 open import Data.String
@@ -33,7 +38,23 @@ lower-pred : ∀ {n} → Fin (suc (suc n)) → Fin (suc n)
 lower-pred {zero} zero = zero
 lower-pred {zero} (suc i) = pred i
 lower-pred {suc n} zero = zero
-lower-pred {suc n} (suc i) = pred i
+lower-pred {suc n} (suc i) = i
+
+lower≤ : ∀ {n} → (l2 : Fin (suc (suc n))) → {l1 : Fin (suc n)} → l2 ≤ inject₁ l1 → Fin (suc n)
+lower≤ {zero} l2 {zero} l1≥l2 = zero
+lower≤ {suc n} zero l1≥l2 = zero
+lower≤ {suc n} l2 {l1} l1≥l2 = lower₁ l2 (≢-sym ssn≠l2)
+  where
+  -- there's gotta be a better way here
+  cmon : toℕ (inject₁ l1) ≡p toℕ l1
+  cmon = toℕ-inject₁ l1
+  {-# BUILTIN REWRITE _≡p_ #-}
+  {-# REWRITE cmon #-}
+  l2<ssn : toℕ l2 Nat.< suc (suc n)
+  l2<ssn = NatP.<-transʳ l1≥l2 (toℕ<n l1)
+
+  ssn≠l2 : toℕ l2 ≢ suc (suc n)
+  ssn≠l2 = NatP.<⇒≢ l2<ssn
 
 data History : ℕ → ℕ → Type₀ where
   -- the empty history
@@ -55,7 +76,7 @@ data History : ℕ → ℕ → Type₀ where
   ADD-ADD-≥ : {m n : ℕ} (l1 : Fin (suc n)) (l2 : Fin (suc (suc n)))
               (s1 s2 : String) (h : History m n) → (l1≥l2 : l2 ≤ (inject₁ l1))
               → (ADD s2 AT l2 :: ADD s1 AT l1 :: h)
-              ≡ (ADD s1 AT (suc l1) :: ADD s2 AT (lower-pred l2) :: h)
+              ≡ (ADD s1 AT (suc l1) :: ADD s2 AT (lower≤ l2 l1≥l2) :: h)
 
   RM-ADD : {m n : ℕ} (l : Fin (suc n)) (s : String) (h : History m n)
            → (RM l :: (ADD s AT l :: h)) ≡ h
@@ -84,8 +105,8 @@ data R : Type₀ where
                 (s1 s2 : String) (h : History 0 n) → (l1≥l2 : l2 ≤ (inject₁ l1))
                 → PathP (λ i → doc h ≡ doc (ADD-ADD-≥ l1 l2 s1 s2 h l1≥l2 i))
                         ((addP s1 l1 h) ∙ (addP s2 l2 (ADD s1 AT l1 :: h)))
-                        ((addP s2 (lower-pred l2) h)
-                          ∙ (addP s1 (suc l1) (ADD s2 AT lower-pred l2 :: h)))
+                        (addP s2 (lower≤ l2 l1≥l2) h
+                          ∙ addP s1 (suc l1) (ADD s2 AT lower≤ l2 l1≥l2 :: h))
   rmP-addP : {n : ℕ} (l : Fin (suc n)) (s : String) (h : History 0 n)
            → PathP (λ i → doc h ≡ doc (RM-ADD l s h i))
                    ((addP s l h) ∙ (rmP l (ADD s AT l :: h)))
@@ -116,6 +137,15 @@ contrEquiv : {A B : Type} → (A → B) → isContr A → isContr B → A ≃ B
 contrEquiv f (aCtr , aContr) contrB = isoToEquiv
   (iso f (λ _ → aCtr) (λ b → isContr→isProp contrB (f aCtr) b) aContr)
 
+-- some results about < that I rely on
+cong-<-suc : ∀ {s} {n m : Fin (suc s)} → n < m → suc n < suc m
+cong-<-suc n<m = {!!}
+
+suc-<-cong : ∀ {s} {n m : Fin (suc s)} → suc n < suc m → n < m
+suc-<-cong {s} {n} {m} sn<sm = {!!}
+
+0<sn : ∀ {s} {n : Fin s} → zero < suc n
+0<sn = {!!}
 
 singl-biject : {A B : Type} {a : A} {b : B} → (singl a → singl b) → singl a ≃ singl b
 singl-biject {a = a} {b = b} f = contrEquiv f (isContrSingl a) (isContrSingl b)
@@ -124,19 +154,45 @@ add-add-< : {n : ℕ} (l1 : Fin (suc n)) (l2 : Fin (suc (suc n)))
             (s1 s2 : String) → (v : Vec String n) → (inject₁ l1) < l2 →
             (add s2 l2 (add s1 l1 v))
             ≡ (add s1 (inject₁ l1) (add s2 (lower-pred l2) v))
-add-add-< {zero} zero (suc zero) s1 s2 [] l1<l2 = refl
-add-add-< {suc .zero} zero (suc zero) s1 s2 (x ∷ []) l1<l2 = refl
-add-add-< {suc .zero} zero (suc (suc zero)) s1 s2 (x ∷ []) l1<l2 = s1 ∷ x ∷ s2 ∷ []
-    ≡⟨ {!!} ⟩ s1 ∷ s2 ∷ x ∷ [] ∎ -- how did this happen?
-add-add-< {suc .(suc _)} zero (suc l2) s1 s2 (x ∷ x₁ ∷ v) l1<l2 = {!!}
-add-add-< {suc n} (suc l1) l2 s1 s2 v l1<l2 = {!!}
+add-add-< {zero} zero (suc zero) _ _ [] _ = refl
+add-add-< {suc .zero} zero (suc zero) _ _ (_ ∷ []) _ = refl
+add-add-< {suc .zero} zero (suc (suc zero)) _ _ (_ ∷ []) _ = refl
+add-add-< {suc .(suc _)} zero (suc _) _ _ (_ ∷ _ ∷ _) _ = refl
+add-add-< n@{suc .zero} (suc zero) (suc zero) _ _ (_ ∷ []) l1<l2 =
+  ⊥-elim (<-irrefl (reflp {x = suc (zero {n = n})}) l1<l2)
+add-add-< {suc .zero} (suc zero) (suc (suc zero)) _ _ (_ ∷ []) _ = refl
+add-add-< n@{suc .(suc _)} (suc zero) (suc zero) _ _ (_ ∷ _ ∷ _) l1<l2 =
+  ⊥-elim (<-irrefl (reflp {x = suc (zero {n = n})}) l1<l2)
+add-add-< {suc .(suc _)} (suc zero) (suc (suc _)) _ _ (_ ∷ _ ∷ _) _ = refl
+add-add-< {suc .(suc _)} (suc (suc l1)) (suc zero) s1 s2 (x ∷ y ∷ xs) l1<l2 =
+  ⊥-elim (<-asym (cong-<-suc 0<sn) l1<l2)
+add-add-< {suc .(suc _)} (suc (suc l1)) (suc (suc l2)) s1 s2 (x ∷ y ∷ xs) l1<l2 =
+  cong (x ∷_) (add-add-< (suc l1) (suc l2) s1 s2 (y ∷ xs) (suc-<-cong l1<l2))
 
+-- and similar results about ≤
+cong-≤-suc : ∀ {s} {n m : Fin (suc s)} → n ≤ m → suc n ≤ suc m
+cong-≤-suc n≤m = {!!}
+
+suc-≤-cong : ∀ {s} {n m : Fin (suc s)} → suc n ≤ suc m → n ≤ m
+suc-≤-cong {s} {n} {m} sn≤sm = {!!}
 
 add-add-≥ : {n : ℕ} (l1 : Fin (suc n)) (l2 : Fin (suc (suc n)))
-            (s1 s2 : String) → (v : Vec String n) → l2 ≤ (inject₁ l1) →
+            (s1 s2 : String) → (v : Vec String n) → (l1≥l2 : l2 ≤ (inject₁ l1)) →
             (add s2 l2 (add s1 l1 v))
-            ≡ (add s1 (suc l1) (add s2 (lower-pred l2) v))
-add-add-≥ l1 l2 s1 s2 v l1≥l2 = {!!}
+            ≡ (add s1 (suc l1) (add s2 (lower≤ l2 l1≥l2) v))
+add-add-≥ {zero} zero zero _ _ _ _ = refl
+add-add-≥ {suc .zero} zero zero _ _ (_ ∷ []) _ = refl
+add-add-≥ {suc .(suc _)} zero zero _ _ (_ ∷ _ ∷ _) _ = refl
+add-add-≥ {suc _} (suc zero) zero _ _ _ _ = refl
+add-add-≥ {suc .1} (suc (suc _)) zero _ _ (_ ∷ _ ∷ []) _ = refl
+add-add-≥ {suc .(suc (suc _))} (suc (suc _)) zero _ _ (_ ∷ _ ∷ _ ∷ _) _ = refl
+add-add-≥ {suc .zero} (suc zero) (suc zero) s1 s2 (x ∷ []) l1≥l2 = refl
+add-add-≥ {suc .zero} (suc zero) (suc (suc zero)) s1 s2 (x ∷ []) l1≥l2 =
+  x ∷ add s2 ((suc zero)) (add s1 (zero) ([]))
+  ≡⟨ {!!} ⟩
+  add s1 (suc (suc zero)) (add s2 (lower≤ (suc (suc zero)) l1≥l2) (x ∷ [])) ∎
+add-add-≥ {suc .(suc _)} (suc l1) (suc zero) s1 s2 (x ∷ x₁ ∷ xs) l1≥l2 = refl
+add-add-≥ {suc .(suc _)} (suc l1) (suc (suc l2)) s1 s2 (x ∷ y ∷ xs) l1≥l2 = {!!}
 
 rm-add : {n : ℕ} (l : Fin (suc n)) (s : String) (v : Vec String n) →
          rm l (add s l v) ≡ v
@@ -146,6 +202,7 @@ rm-add (suc zero) s (x ∷ y ∷ xs) = refl
 rm-add (suc (suc zero)) s (x ∷ y ∷ []) = refl
 rm-add (suc (suc l)) s (x ∷ y ∷ z ∷ xs) = x ∷ rm (suc l) (add s (suc l) (y ∷ z ∷ xs))
   ≡⟨ cong (x ∷_) (rm-add (suc l) s (y ∷ z ∷ xs)) ⟩ x ∷ y ∷ z ∷ xs ∎
+{-
 
 replay : {n : ℕ} → History 0 n → Vec String n
 replay [] = []
@@ -171,3 +228,4 @@ interp p = pathToEquiv (cong Interpreter p)
 apply : {n1 n2 : ℕ} {h1 : History 0 n1} {h2 : History 0 n2} →
         doc h1 ≡ doc h2 → Interpreter (doc h1) → Interpreter (doc h2)
 apply p h = equivFun (interp p) h
+-}
