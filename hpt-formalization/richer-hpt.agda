@@ -3,8 +3,6 @@
   Implementation of the patch theory described in
   6. A Patch Theory With Richer Context (Angiuli et al.)
 
-
-  NOTE: uses Nats in place of Fin, because Fin was really fiddly
 -}
 
 module richer-hpt where

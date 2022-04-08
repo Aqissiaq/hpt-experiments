@@ -301,6 +301,9 @@ module testing where
   resultOpt : repoType
   resultOpt = apply (optimize' (nopPatch ∙ swapPatch)) bigBreakfast
 
+  resultOptNop : repoType
+  resultOptNop = apply (optimize' nopPatch) bigBreakfast
+
 {- All of these give terms that do not completely reduce
 
 Problem appears to be: https://github.com/agda/agda/issues/3733
@@ -319,7 +322,11 @@ However, we *can* show some results using transportRefl...
   _ : resultNop ≡ bigBreakfast
   _ = transportRefl bigBreakfast
 
--- ... but this appears to hang
+
+-- ... but these appear to compute forever
+  -- _ : resultNop ≡ resultOptNop
+  -- _ = transportRefl bigBreakfast
+
   -- _ : resultOp ≡ resultOpt
   -- _ = transportRefl swapped
 
