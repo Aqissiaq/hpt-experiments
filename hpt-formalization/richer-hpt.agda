@@ -107,9 +107,11 @@ Interpreter : R → Type
 Interpreter (doc x) = singl (replay x)
 Interpreter (addP s l h i) = ua (singl-biject {a = replay h} (mapSingl (add s l))) i
 Interpreter (rmP l h i) = ua (singl-biject {a = replay h} (mapSingl (rm l))) i
-Interpreter (addP-addP-< l1 l2 s1 s2 h l1<l2 i i₁) = {!!}
-Interpreter (addP-addP-≥ l1 l2 s1 s2 h l1≥l2 i i₁) = {!!}
-Interpreter (rmP-addP l s h i i₁) = {!!}
+-- these should be "replay respects patch laws", but I haven't figured out what that means
+-- paths over paths over paths?
+Interpreter (addP-addP-< l1 l2 s1 s2 h l1<l2 i j) = {!!}
+Interpreter (addP-addP-≥ l1 l2 s1 s2 h l1≥l2 i j) = {!!}
+Interpreter (rmP-addP l s h i j) = {!!}
 
 interp : {n1 n2 : ℕ} {h1 : History 0 n1} {h2 : History 0 n2} →
          doc h1 ≡ doc h2 → Interpreter (doc h1) ≃ Interpreter (doc h2)
@@ -118,3 +120,39 @@ interp p = pathToEquiv (cong Interpreter p)
 apply : {n1 n2 : ℕ} {h1 : History 0 n1} {h2 : History 0 n2} →
         doc h1 ≡ doc h2 → Interpreter (doc h1) → Interpreter (doc h2)
 apply p h = equivFun (interp p) h
+
+-- testing
+emptyR : R
+emptyR = doc []
+
+patch1 : doc [] ≡ doc (ADD "hello" AT zero :: [])
+patch1 = addP "hello" zero []
+
+patch2 : doc (ADD "hello" AT zero :: []) ≡ doc (RM zero :: (ADD "hello" AT zero :: []))
+patch2 = rmP zero (ADD "hello" AT zero :: [])
+
+RM-ADD-R : doc (RM zero :: (ADD "hello" AT zero :: [])) ≡ doc []
+RM-ADD-R = cong doc (RM-ADD zero "hello" [])
+
+result : Interpreter (doc (ADD "hello" AT zero :: []))
+result = apply patch1 ([] , λ _ → [])
+
+result' : Interpreter (doc (RM zero :: (ADD "hello" AT zero :: [])))
+result' = apply patch2 (apply patch1 ([] , refl))
+
+result'' : Interpreter (doc (RM zero :: (ADD "hello" AT zero :: [])))
+result'' = apply (patch1 ∙ patch2) ([] , refl)
+
+-- as expected
+_ : result ≡ ("hello" ∷ [] , refl)
+_ = transportRefl ("hello" ∷ [] , refl)
+
+-- correct(?) but not very interesting
+_ : result' ≡ (rm zero (fst (apply patch1 ([] , refl)))
+              , (λ i → rm zero (snd (apply patch1 ([] , refl)) i)))
+_ = transportRefl (rm zero (fst (apply patch1 ([] , refl)))
+                  , (λ i → rm zero (snd (apply patch1 ([] , refl)) i)))
+
+-- this does not work, since hcomp does not compute
+-- _ : result' ≡ result''
+-- _ = {!!}
