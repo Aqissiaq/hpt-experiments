@@ -72,12 +72,14 @@ add-add-≥ {suc .zero} (suc zero) (suc (suc zero)) s1 s2 (x ∷ []) (l1≥l2) =
 add-add-≥ {suc .(suc _)} (suc _) (suc zero) _ _ (_ ∷ _ ∷ _) _ = refl
 add-add-≥ {suc .(suc _)} (suc zero) (suc (suc _)) _ _ (_ ∷ _ ∷ _) (Nat.s≤s p) =
   ⊥-elim (NatP.1+n≢0 (NatP.n≤0⇒n≡0 p))
-add-add-≥ {suc .(suc _)} (suc (suc l1)) (suc (suc zero)) s1 s2 (x ∷ y ∷ xs) l1≥l2 = refl
+add-add-≥ {suc .(suc _)} (suc (suc _)) (suc (suc zero)) _ _ (_ ∷ _ ∷ _) _ = refl
 add-add-≥ {suc .(suc _)} (suc (suc l1)) (suc (suc (suc l2))) s1 s2 (x ∷ y ∷ xs) l1≥l2 =
   x ∷ y ∷ add s2 (suc l2) (add s1 l1 xs)
-    ≡⟨ cong (λ v → x ∷ v) (add-add-≥ (suc l1) (suc (suc l2)) s1 s2 (y ∷ xs) (NatP.+-cancelˡ-≤ 1 l1≥l2)) ⟩
+    ≡⟨ cong (λ v → x ∷ v)
+            (add-add-≥ (suc l1) (suc (suc l2)) s1 s2 (y ∷ xs) (NatP.+-cancelˡ-≤ 1 l1≥l2)) ⟩
   x ∷ y ∷ add s1 (suc l1) (add s2 (suc (lower₁ l2 _)) xs)
-    ≡⟨ cong (λ l → x ∷ y ∷ add s1 (suc l1) (add s2 (suc l) xs)) (ptoc (lower₁-irrelevant l2 _ _)) ⟩
+    ≡⟨ cong (λ l → x ∷ y ∷ add s1 (suc l1) (add s2 (suc l) xs))
+            (ptoc (lower₁-irrelevant l2 _ _)) ⟩
   x ∷ y ∷ add s1 (suc l1) (add s2 (suc (lower₁ l2 _)) xs) ∎
 
 rm-add : {n : ℕ} (l : Fin (suc n)) (s : String) (v : Vec String n) →

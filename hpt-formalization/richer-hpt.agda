@@ -16,6 +16,7 @@ open import Cubical.Foundations.Univalence
 open import Cubical.Foundations.Isomorphism
 open import Cubical.Data.Nat
 open import Cubical.Data.Vec
+open import Cubical.Data.Sigma
 
 open import Data.Fin
 open import Data.String
@@ -95,6 +96,14 @@ contrEquiv f (aCtr , aContr) contrB = isoToEquiv
 singl-biject : {A B : Type} {a : A} {b : B} → (singl a → singl b) → singl a ≃ singl b
 singl-biject {a = a} {b = b} f = contrEquiv f (isContrSingl a) (isContrSingl b)
 
+singl-square : {BL BR TL TR : Type}{bl : BL}{br : BR}{tl : TL}{tr : TR}
+               → (top : ((singl tl) ≡ (singl tr)))
+               → (bot : ((singl bl) ≡ (singl br)))
+               → (lhs : ((singl bl) ≡ (singl tl)))
+               → (rhs : ((singl br) ≡ (singl tr)))
+               → Square bot top lhs rhs
+singl-square top bot lhs rhs = {!!}
+
 replay : {n : ℕ} → History 0 n → Vec String n
 replay [] = []
 replay (ADD s AT l :: h) = add s l (replay h)
@@ -107,9 +116,14 @@ Interpreter : R → Type
 Interpreter (doc x) = singl (replay x)
 Interpreter (addP s l h i) = ua (singl-biject {a = replay h} (mapSingl (add s l))) i
 Interpreter (rmP l h i) = ua (singl-biject {a = replay h} (mapSingl (rm l))) i
--- these should be "replay respects patch laws", but I haven't figured out what that means
--- paths over paths over paths?
-Interpreter (addP-addP-< l1 l2 s1 s2 h l1<l2 i j) = {!!}
+-- step back and do it for all singletons, then apply to specific case
+Interpreter (addP-addP-< l1 l2 s1 s2 h l1<l2 i j) =
+  singl-square {bl = replay h} {br = replay h}
+               {tl = replay (ADD s2 AT l2 :: (ADD s1 AT l1 :: h))}
+               {tr = replay (ADD s1 AT inject₁ l1 :: (ADD s2 AT lower-pred l2 :: h))}
+               {!!} {!!} {!!} {!!} i j
+-- this turns out to be really difficult
+-- hcomp does not definitionally compute, and Interpreter does not terminate
 Interpreter (addP-addP-≥ l1 l2 s1 s2 h l1≥l2 i j) = {!!}
 Interpreter (rmP-addP l s h i j) = {!!}
 
@@ -156,3 +170,38 @@ _ = transportRefl (rm zero (fst (apply patch1 ([] , refl)))
 -- this does not work, since hcomp does not compute
 -- _ : result' ≡ result''
 -- _ = {!!}
+
+_+++_ : {n1 n2 n3 : ℕ} → History n1 n2 → History n2 n3 → History n1 n3
+h1 +++ [] = h1
+h1 +++ (ADD s AT l :: h2) = ADD s AT l :: (h1 +++ h2)
+h1 +++ (RM l :: h2) = RM l :: (h1 +++ h2)
+h1 +++ ADD-ADD-< l1 l2 s1 s2 h2 l1<l2 i = ADD-ADD-< l1 l2 s1 s2 (h1 +++ h2) l1<l2 i
+h1 +++ ADD-ADD-≥ l1 l2 s1 s2 h2 l1≥l2 i = ADD-ADD-≥ l1 l2 s1 s2 (h1 +++ h2) l1≥l2 i
+h1 +++ RM-ADD l s h2 i = RM-ADD l s (h1 +++ h2) i
+
+Extension : {n m : ℕ} → History 0 n → History 0 m → Type
+Extension {n} {m} h1 h2 = Σ[ h3 ∈ History n m ] (h1 +++ h3) ≡ h2
+
+postulate
+  mergeH : {n m k : ℕ} →
+           (h1 : History 0 n) (h2 : History 0 m) →
+           Σ[ n' ∈ ℕ ] (Σ[ h' ∈ History 0 n' ] (Extension h1 h' × Extension h2 h'))
+  interpH : {n : ℕ}{h : History 0 n}{h' : History 0 n} → doc h ≡ doc h' → singl h → singl h'
+
+toPath : {n : ℕ} (h : History 0 n) → doc [] ≡ doc h
+toPath [] = refl
+toPath (ADD s AT l :: h) = (toPath h) ∙ addP s l h
+toPath (RM l :: h) = (toPath h) ∙ rmP l h
+toPath (ADD-ADD-< l1 l2 s1 s2 h l1<l2 i) = {!!}
+toPath (ADD-ADD-≥ l1 l2 s1 s2 h l1≥l2 i) = {!!}
+toPath (RM-ADD l s h i) = {!!}
+
+extToPath : {n m : ℕ} {h : History 0 n} {h' : History 0 m} →
+            Extension h h' → doc h ≡ doc h'
+extToPath {h = h} {h' = h'} _ = sym (toPath h) ∙ toPath h'
+
+merge : {n m : ℕ} {h1 : History 0 m} {h2 : History 0 m} →
+        doc [] ≡ doc h1 → doc [] ≡ doc h2 →
+        Σ[ n' ∈ ℕ ] (Σ[ h' ∈ History 0 n' ] (doc h1 ≡ doc h') × (doc h2 ≡ doc h'))
+merge p1 p2 = let (n' , (h' , e1 , e2)) = mergeH (interpH p1 []) (interpH p2 [])
+  in (n' , (h' , (extToPath e1 , extToPath e2)))
