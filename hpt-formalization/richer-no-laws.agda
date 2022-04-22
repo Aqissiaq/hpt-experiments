@@ -138,12 +138,7 @@ reflExt = [] , refl
 
 -- there has got to be a canonical (pretty) solution for this
 fromSingl : {A : Type}{a : A} → singl a → A
-fromSingl (a , _) = a
-
-interpH-lemma : ∀ {n m}{h : History 0 n}{h' : History 0 m}
-                → (p : doc h ≡ doc h')
-                → h' ≡ fromSingl (interpH p (h , refl))
-interpH-lemma {h = h} p = let (_ , proof) = interpH p (h , refl) in proof
+fromSingl = fst
 
 module merging {
   mergeH : {n m : ℕ} →
@@ -163,14 +158,16 @@ module merging {
   merge : {n1 n2 : ℕ}{h1 : History 0 n1}{h2 : History 0 n2}
         → (doc [] ≡ doc h1) → (doc [] ≡ doc h2)
         → Σ[ n' ∈ ℕ ] (Σ[ h' ∈ History 0 n' ] (doc h1 ≡ doc h') × (doc h2 ≡ doc h'))
-  merge {n1} {n2} {h1} {h2} p1 p2 = let (n' , (h' , (e1 , e2))) = mergeH (fromSingl (interpH p1 ([] , refl))) (fromSingl (interpH p2 ([] , refl)))
-                                        e1' = fst e1 , cong (_+++ (fst e1)) (interpH-lemma p1) ∙ snd e1
-                                        e2' = fst e2 , cong (_+++ (fst e2)) (interpH-lemma p2) ∙ snd e2
-    in (n' , (h' , extToPath e1' , extToPath e2'))
+  merge p1 p2 = let (p1H , p1P) = interpH p1 ([] , refl)
+                    (p2H , p2P) = interpH p2 ([] , refl)
+                    (_ , (h' , ((ext1 , ext1-proof) , (ext2 , ext2-proof)))) = mergeH p1H p2H
+                    e1 = ext1 , cong (_+++ ext1) p1P ∙ ext1-proof
+                    e2 = ext2 , cong (_+++ ext2) p2P ∙ ext2-proof
+    in (_ , (h' , extToPath e1 , extToPath e2))
 
 postulate
   undo : ∀ {n m} → History n m → History m n
-  undo-inverse : ∀ {n m } → (h : History n m)
+  undo-inverse : ∀ {n m} → (h : History n m)
                 → h +++ undo h ≡ []
 
 mergeH : {n m : ℕ} →
