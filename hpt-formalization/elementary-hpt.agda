@@ -16,6 +16,7 @@ open import Cubical.Foundations.Prelude
   ; _≡⟨_⟩_
   ; _∎
   ; cong
+  ; cong₂
   ; sym
   )
 
@@ -65,18 +66,6 @@ symmetric : { f1 f2 g1 g2 : Patch }
 symmetric p = cong merge p
 
 -- reconcile turns out to be much more difficult, and we have to go via the interpretation of patches
--- Some helper functions that will be useful for reconcile
-private
-    uncurry-helper : {A : Type₀} (a b c d : A)
-                     →(f : A → A → A) → a ≡ d × c ≡ b
-                     → f a c ≡ f d b
-    uncurry-helper a b c d f (a≡d , c≡b) = (uncurry f) ( a , c )
-                                         ≡⟨ cong (λ x → f x c) a≡d ⟩ (uncurry f) ( d , c )
-                                         ≡⟨ cong (λ x → f d x) c≡b ⟩ (uncurry f) ( d , b ) ∎
-    pairwise≡ : {p q r s : Patch}
-                → merge (p , q) ≡ (r , s) → p ≡ s × r ≡ q
-    pairwise≡ p = cong snd p , cong fst (sym p)
-
 {-
 with this interpretation, patches commute
 this relies on two facts:
@@ -89,25 +78,23 @@ intLoop-sur : (p : Patch) → ∃[ n ] (p ≡ intLoop n)
 intLoop-sur p = equivFun (interp p) 0 , sym (decodeEncode num p)
 
 patch-comm : (p q : Patch) → p ∙ q ≡ q ∙ p
-patch-comm p q =
-  p ∙ q ≡⟨ uncurry-helper p (intLoop m) q (intLoop n) _∙_ (p-is-n , q-is-m) ⟩ intLoop n ∙ intLoop m
-        ≡⟨ intLoop-hom n m ⟩                                                  intLoop (n + m)
-        ≡⟨ cong intLoop (+Comm n m) ⟩                                        intLoop (m + n)
-        ≡⟨ sym (intLoop-hom m n) ⟩                                            intLoop m ∙ intLoop n
-        ≡⟨ uncurry-helper (intLoop m) p (intLoop n) q _∙_ (m-is-q , n-is-p) ⟩ q ∙ p ∎
-  where
-    n      = fst (intLoop-sur p)
-    m      = fst (intLoop-sur q)
-    p-is-n = snd (intLoop-sur p)
-    q-is-m = snd (intLoop-sur q)
-    n-is-p = sym p-is-n
-    m-is-q = sym q-is-m
+patch-comm p q = let (n , p-is-n) = intLoop-sur p
+                     (m , q-is-m) = intLoop-sur q
+                     n-is-p = sym p-is-n
+                     m-is-q = sym q-is-m in
+  p ∙ q ≡⟨ cong₂ _∙_ p-is-n q-is-m ⟩  intLoop n ∙ intLoop m
+        ≡⟨ intLoop-hom n m ⟩          intLoop (n + m)
+        ≡⟨ cong intLoop (+Comm n m) ⟩ intLoop (m + n)
+        ≡⟨ sym (intLoop-hom m n) ⟩    intLoop m ∙ intLoop n
+        ≡⟨ cong₂ _∙_ m-is-q n-is-p ⟩
+  q ∙ p ∎
 
 -- with this fact established, reconcile is suddenly quite easy
 reconcile : { f1 f2 g1 g2 : Patch }
             → merge ( f1 , f2 ) ≡ ( g1 , g2 ) → f1 ∙ g1 ≡ f2 ∙ g2
-reconcile {f1} {f2} {g1} {g2} p =
-  f1 ∙ g1 ≡⟨ uncurry-helper f1 f2 g1 g2 _∙_ (pairwise≡ p) ⟩ g2 ∙ f2
+reconcile {f1} {f2} {g1} {g2} p = let f1=g2 = cong snd p
+                                      g1=f2 = cong fst (sym p) in
+  f1 ∙ g1 ≡⟨ cong₂ _∙_ f1=g2 g1=f2 ⟩ g2 ∙ f2
           ≡⟨ patch-comm g2 f2 ⟩
   f2 ∙ g2 ∎
 
