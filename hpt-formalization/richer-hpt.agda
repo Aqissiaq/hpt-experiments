@@ -173,7 +173,12 @@ _ = transportRefl (rm zero (fst (apply patch1 ([] , refl)))
 -}
 
 I' : R → Type
-I' x = {!!}
+I' (doc h) = singl h
+I' (addP s l h i) = ua (singl-biject {a = h} (mapSingl (λ h → ADD s AT l :: h))) i
+I' (rmP l h i) = ua (singl-biject {a = h} (mapSingl (λ h → RM l :: h))) i
+I' (addP-addP-< l1 l2 s1 s2 h l1<l2 i i₁) = {!!}
+I' (addP-addP-≥ l1 l2 s1 s2 h l1≥l2 i i₁) = {!!}
+I' (rmP-addP l s h i i₁) = {!!}
 
 interpH : {n : ℕ}{h : History 0 n}{h' : History 0 n} →
           doc h ≡ doc h' → singl h → singl h'
@@ -210,5 +215,5 @@ extToPath {h = h} {h' = h'} _ = sym (toPath h) ∙ toPath h'
 merge : {n m : ℕ} {h1 : History 0 m} {h2 : History 0 m} →
         doc [] ≡ doc h1 → doc [] ≡ doc h2 →
         Σ[ n' ∈ ℕ ] (Σ[ h' ∈ History 0 n' ] (doc h1 ≡ doc h') × (doc h2 ≡ doc h'))
-merge p1 p2 = let (n' , (h' , e1 , e2)) = mergeH {!interpH!} {!!}
+merge p1 p2 = let (n' , (h' , e1 , e2)) = mergeH _ _
   in (n' , (h' , (extToPath e1 , extToPath e2)))
