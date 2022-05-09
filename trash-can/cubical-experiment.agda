@@ -11,8 +11,8 @@ open import Cubical.Data.Nat
 open import Cubical.Data.Int
 
 data R : Type₀ where
-  context : Int → R
-  addn    : (n m : Int) → context n ≡ context (n + m)
+  context : ℤ → R
+  addn    : (n m : ℤ) → context n ≡ context (n + m)
 
 Span : R → R → Type₀
 Span y y' = Σ[ x ∈ R ] (x ≡ y) × (x ≡ y')

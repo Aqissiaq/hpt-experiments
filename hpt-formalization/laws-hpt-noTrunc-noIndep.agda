@@ -238,6 +238,7 @@ optimize p = transport e (cong opt p)
     lemma : {X : Type} {x y : X} →
             (f g : x ≡ y) →
             (sym f ∙ g ≡ refl) ≡ (g ≡ f)
+    -- should this whole thing just be a J-proof?
     lemma f g = sym f ∙ g ≡ refl
       ≡⟨ cong (λ x → (sym f ∙ g) ≡ x) (sym (lCancel f)) ⟩
         (sym f) ∙ g ≡ (sym f) ∙ f
@@ -289,6 +290,16 @@ module testing where
   testPatch : doc ≡ doc
   testPatch = nopPatch ∙ swapPatch ∙ nopPatch
 
+  -- runs for hours
+  -- _ : (optimize' nopPatch) ≡ refl
+  -- _ = (transportRefl
+  --       (transportRefl
+  --         _))
+
+  -- this also runs for a really long time...
+  -- _ : optimize' swapPatch ≡ swapPatch
+  -- _ = transportRefl swapPatch
+
   resultOp : repoType
   resultOp = apply swapPatch bigBreakfast
 
@@ -315,7 +326,6 @@ See also section 3.2.4 (p. 24) of https://staff.math.su.se/anders.mortberg/paper
 
 However, we *can* show some results using transportRefl...
 -}
-
   _ : resultOp ≡ swapped
   _ = transportRefl swapped
 

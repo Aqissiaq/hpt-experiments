@@ -95,7 +95,7 @@ hopefully that is equivalent, but need to prove at some point
       foo {base = sett a i} = λ j → sett a  (i ∧ ~ j)
 
       bar :  (cs : Simple-CoSpan x y) → ([ Nothing ] , foo , foo) ≡ cs
-      bar (base , p , q) = λ i → (foo {base = base} (~ i)) , (λ j → p (~ i ∧ j)), λ j → q {!!}
+      bar (base , p , q) = λ i → (foo {base = base} (~ i)) , (λ j → p ({!!} ∧ {!!})) , λ j → q {!!}
       -- ?0 : x ≡ foo (~ i)
       -- ?1 : y ≡ foo (~ i)
 
@@ -117,7 +117,7 @@ hopefully that is equivalent, but need to prove at some point
   merge : {x y : Maybe} → Span x y → CoSpan x y
   merge = thunk
 
-open module test = repo Int
+open module test = repo ℤ
 
 sett0 = sett 0
 sett1 = sett 1

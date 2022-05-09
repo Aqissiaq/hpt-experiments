@@ -20,17 +20,17 @@ open import Cubical.Data.Sigma
 module minimal-VC where
 
 data Repo : Type₀ where
-  num : Int → Repo
+  num : ℤ → Repo
 
 data Patch : Repo → Repo → Type₀ where
-  add1   : (n : Int) → Patch (num n) (num (sucInt n))
-  set    : ∀ {m} → (n : Int) → Patch (num m) (num n)
+  add1   : (n : ℤ) → Patch (num n) (num (sucℤ n))
+  set    : ∀ {m} → (n : ℤ) → Patch (num m) (num n)
   -- alternative to ∘p, to keep the info for later?
   --compP  : ∀ {x} {y} {z} → Patch x y → Patch y z → Patch x z
 
 _∘p_ : ∀ {x} {y} {z} → Patch x y → Patch y z → Patch x z
-add1 n ∘p add1 .(sucInt n) = set (sucInt (sucInt n))
-set n ∘p add1 .n = set (sucInt n)
+add1 n ∘p add1 .(sucℤ n) = set (sucℤ (sucℤ n))
+set n ∘p add1 .n = set (sucℤ n)
 add1 n ∘p set m = set m
 set n ∘p set m = set m
 
@@ -45,11 +45,11 @@ swapPair : {A : Type₀} {B C : A → Type₀}
 swapPair (a , b , c) = a , c , b
 
 merge : ∀ {y} {y'} → Span y y' → CoSpan y y'
-merge {.(num (sucInt n))} {.(num (sucInt n))} (.(num n) , add1 n , add1 .n) =
+merge {.(num (sucℤ n))} {.(num (sucℤ n))} (.(num n) , add1 n , add1 .n) =
   num (n + 2) , add1 (n + 1) , add1 (n + 1)
-merge {.(num (sucInt n))} {.(num m)} (.(num n) , add1 n , set m) =
+merge {.(num (sucℤ n))} {.(num m)} (.(num n) , add1 n , set m) =
   num (m + 1) , set m ∘p add1 m , add1 m
-merge {.(num n)} {.(num (sucInt _))} (.(num _) , set n , add1 _) =
+merge {.(num n)} {.(num (sucℤ _))} (.(num _) , set n , add1 _) =
   num (n + 1) , add1 n , set n ∘p add1 n
 merge {.(num n)} {.(num m)} (num x , set n , set m) =
  num x , set x , set x --ideally I would want inverse here, and signal a merge conflict
@@ -68,10 +68,10 @@ reconcile (_ , set n , set n₁)   = refl
 
 symmetric : ∀ {y y'} {s : Span y y'}
             → swapPair (merge s) ≡ merge (swapPair s)
-symmetric {.(num (sucInt n))} {.(num (sucInt n))} {.(num n) , add1 n , add1 .n} = refl
-symmetric {.(num (sucInt n))} {.(num n₁)} {.(num n) , add1 n , set n₁}          = refl
-symmetric {.(num n)} {.(num (sucInt _))} {.(num _) , set n , add1 _}            = refl
-symmetric {.(num n)} {.(num n₁)} {.(num _) , set n , set n₁}                    = refl
+symmetric {.(num (sucℤ n))} {.(num (sucℤ n))} {.(num n) , add1 n , add1 .n} = refl
+symmetric {.(num (sucℤ n))} {.(num m)} {.(num n) , add1 n , set m}          = refl
+symmetric {.(num n)} {.(num (sucℤ _))} {.(num _) , set n , add1 _}          = refl
+symmetric {.(num n)} {.(num m)} {.(num _) , set n , set m}                  = refl
 
 -- it does, trivially so
 

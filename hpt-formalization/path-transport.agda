@@ -28,13 +28,12 @@ module _ {A B : Type ℓ} {a a' : A} where
     subst (λ x → f x ≡ g x) p q ≡ sym (cong f p) ∙ q ∙ cong g p
   transport-in-paths f g p q =
     J (λ x p' → (subst (λ y → f y ≡ g y) p' q) ≡ (sym (cong f p') ∙ q ∙ cong g p'))
-    p=refl p
+      p=refl p
     where
-    p=refl : subst (λ y → f y ≡ g y) refl q ≡
-          (λ i → f (refl {x = a} (~ i))) ∙ q ∙ (λ i → g (refl {x = a} i))
+    p=refl : subst (λ y → f y ≡ g y) refl q ≡ refl ∙ q ∙ refl
     p=refl = subst (λ y → f y ≡ g y) refl q
            ≡⟨ substRefl {B = (λ y → f y ≡ g y)} q ⟩ q
-           ≡⟨ (rUnit q) ∙ lUnit (q ∙ refl) ⟩ refl {x = f a} ∙ q ∙ refl {x = g a} ∎
+           ≡⟨ (rUnit q) ∙ lUnit (q ∙ refl) ⟩ refl ∙ q ∙ refl ∎
 
 -- 2.11.2 special cases
 module _ {A : Type ℓ} {a x1 x2 : A} (p : x1 ≡ x2) where

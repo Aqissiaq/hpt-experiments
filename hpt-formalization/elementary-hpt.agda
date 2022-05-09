@@ -5,6 +5,8 @@ module elementary-hpt where
 open import Function.Base
 open import Data.Product
 open import Cubical.Data.Int
+open import Cubical.Data.Nat
+  using(zero ; suc)
 
 open import Cubical.Core.Everything
   hiding (I)
@@ -39,6 +41,8 @@ open import Cubical.Foundations.Univalence
 interp : Patch → ℤ ≃ ℤ
 interp p = pathToEquiv (cong I p)
 
+apply : Patch → ℤ → ℤ
+apply p n = equivFun (interp p) n
 {-
   definition of a merge operation on these very simple Int-patches
   since + is commutative, we just swap them
@@ -110,6 +114,4 @@ invSuccPatch = sym add1
 compPatch : Patch
 compPatch = succPatch ∙ invSuccPatch
 
-apply : Patch → ℤ → ℤ
-apply p n = equivFun (interp p) n
 

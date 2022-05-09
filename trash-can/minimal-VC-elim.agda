@@ -15,9 +15,9 @@ open import Cubical.Data.Bool
 module minimal-VC-elim where
 
 0-iden : ∀ z → pos 0 + z ≡ z
-0{!!}-iden z = sym (pos0+ z)
+0-iden z = sym (pos0+ z)
 {-# BUILTIN REWRITE _≡_ #-}
-{-# REWRITE +-assoc sucInt+ 0-iden #-}
+{-# REWRITE +Assoc 0-iden #-}
 
 record Pair (A B : Set) : Set where
   constructor _,_
@@ -46,21 +46,21 @@ Circle-elim _ b _ base = b
 Circle-elim _ _ p (loop i) = p i
 
 helix : Circle → Type₀
-helix = Circle-rec Int sucPathInt
+helix = Circle-rec ℤ sucPathℤ
 
 data Repo : Type₀ where
-  num : Int → Repo
-  add : (n m : Int) → num n ≡ num (n + m)
-  set : ∀ n → (m : Int) → num n ≡ num m
+  num : ℤ → Repo
+  add : (n m : ℤ) → num n ≡ num (n + m)
+  set : ∀ n → (m : ℤ) → num n ≡ num m
 
 data Span-HIT : Repo → Repo → Type₀ where
-  add-add : (n m k : Int) → Span-HIT (num (n + m)) (num (n + k)) -- p = add n m, q = add n k
-  add-set : (n m k : Int) → Span-HIT (num (n + m)) (num k) -- p,q = add n m, set n k
-  set-add : (n m k : Int) → Span-HIT (num m) (num (n + k)) -- p,q = set n m, add n k
-  set-set : (n m k : Int) → Span-HIT (num m) (num k) -- p,q = set n m, set n k
+  add-add : (n m k : ℤ) → Span-HIT (num (n + m)) (num (n + k)) -- p = add n m, q = add n k
+  add-set : (n m k : ℤ) → Span-HIT (num (n + m)) (num k) -- p,q = add n m, set n k
+  set-add : (n m k : ℤ) → Span-HIT (num m) (num (n + k)) -- p,q = set n m, add n k
+  set-set : (n m k : ℤ) → Span-HIT (num m) (num k) -- p,q = set n m, set n k
 
-  set=set : (n n' m : Int) → set-set n m m ≡ set-set n' m m
-  -- add=add : (n n' m : Int) → add-add n m m ≡ add-add m n n
+  set=set : (n n' m : ℤ) → set-set n m m ≡ set-set n' m m
+  -- add=add : (n n' m : ℤ) → add-add n m m ≡ add-add m n n
 
 Span : {X : Type₀} → X → X → Type₀
 Span {X} y y' = Σ[ x ∈ X ] (x ≡ y) × (x ≡ y')
@@ -68,9 +68,9 @@ Span {X} y y' = Σ[ x ∈ X ] (x ≡ y) × (x ≡ y')
 
 Repo-elim : {ℓ : Level} →
             (B : Repo → Type ℓ)
-            (f : (n : Int) → B (num n))
-            (p : (n m : Int) → PathP (λ i → B (add n m i)) (f n) (f (n + m)))
-            (q : ∀ n → (m : Int) → PathP (λ i → B (set n m i)) (f n) (f m))
+            (f : (n : ℤ) → B (num n))
+            (p : (n m : ℤ) → PathP (λ i → B (add n m i)) (f n) (f (n + m)))
+            (q : ∀ n → (m : ℤ) → PathP (λ i → B (set n m i)) (f n) (f m))
            ---------------------------------------------------------------
              → (x : Repo) → B x
 Repo-elim _ f _ _ (num x) = f x
@@ -93,10 +93,10 @@ Span-elim B f (x , p , q) = f x p q
 
 {- WANT: something like
   B : Span y y' → Type₀
-  add-add : (n m b : Int) → B (num b , add b n , add b m)
-  add-set : (n m b : Int) → B (num b , add b n , set m)
-  set-add : (n m b : Int) → B (num b , set n , add b m)
-  set-set : (n m b : Int) → B (num b , set n , set m)
+  add-add : (n m b : ℤ) → B (num b , add b n , add b m)
+  add-set : (n m b : ℤ) → B (num b , add b n , set m)
+  set-add : (n m b : ℤ) → B (num b , set n , add b m)
+  set-set : (n m b : ℤ) → B (num b , set n , set m)
   -------------------------------------------------------
   (s : Span y y') → B s
 
