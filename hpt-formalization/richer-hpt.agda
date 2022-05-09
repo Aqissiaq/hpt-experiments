@@ -96,13 +96,14 @@ contrEquiv f (aCtr , aContr) contrB = isoToEquiv
 singl-biject : {A B : Type} {a : A} {b : B} → (singl a → singl b) → singl a ≃ singl b
 singl-biject {a = a} {b = b} f = contrEquiv f (isContrSingl a) (isContrSingl b)
 
-singl-square : {BL BR TL TR : Type}{bl : BL}{br : BR}{tl : TL}{tr : TR}
-               → (top : ((singl tl) ≡ (singl tr)))
-               → (bot : ((singl bl) ≡ (singl br)))
-               → (lhs : ((singl bl) ≡ (singl tl)))
-               → (rhs : ((singl br) ≡ (singl tr)))
-               → Square bot top lhs rhs
-singl-square top bot lhs rhs = {!!}
+postulate
+  singl-square : {BL BR TL TR : Type}{bl : BL}{br : BR}{tl : TL}{tr : TR}
+                → (lhs : ((singl bl) ≡ (singl tl)))
+                → (rhs : ((singl br) ≡ (singl tr)))
+                → (bot : ((singl bl) ≡ (singl br)))
+                → (top : ((singl tl) ≡ (singl tr)))
+                → Square lhs rhs bot top
+-- singl-square top bot lhs rhs i j = {!!}
 
 replay : {n : ℕ} → History 0 n → Vec String n
 replay [] = []
@@ -112,18 +113,15 @@ replay (ADD-ADD-< l1 l2 s1 s2 h l1<l2 i) = add-add-< l1 l2 s1 s2 (replay h) l1<l
 replay (ADD-ADD-≥ l1 l2 s1 s2 h l1≥l2 i) = add-add-≥ l1 l2 s1 s2 (replay h) l1≥l2 i
 replay (RM-ADD l s h i) = rm-add l s (replay h) i
 
+{-
 Interpreter : R → Type
 Interpreter (doc x) = singl (replay x)
 Interpreter (addP s l h i) = ua (singl-biject {a = replay h} (mapSingl (add s l))) i
 Interpreter (rmP l h i) = ua (singl-biject {a = replay h} (mapSingl (rm l))) i
 -- step back and do it for all singletons, then apply to specific case
-Interpreter (addP-addP-< l1 l2 s1 s2 h l1<l2 i j) =
-  singl-square {bl = replay h} {br = replay h}
-               {tl = replay (ADD s2 AT l2 :: (ADD s1 AT l1 :: h))}
-               {tr = replay (ADD s1 AT inject₁ l1 :: (ADD s2 AT lower-pred l2 :: h))}
-               {!!} {!!} {!!} {!!} i j
--- this turns out to be really difficult
--- hcomp does not definitionally compute, and Interpreter does not terminate
+Interpreter (addP-addP-< l1 l2 s1 s2 h l1<l2 i j) = {!!}
+-- this turns out to be really difficult, even with singl-square
+-- hcomp does not definitionally compute, and Interpreter does not terminate :/
 Interpreter (addP-addP-≥ l1 l2 s1 s2 h l1≥l2 i j) = {!!}
 Interpreter (rmP-addP l s h i j) = {!!}
 
@@ -134,7 +132,9 @@ interp p = pathToEquiv (cong Interpreter p)
 apply : {n1 n2 : ℕ} {h1 : History 0 n1} {h2 : History 0 n2} →
         doc h1 ≡ doc h2 → Interpreter (doc h1) → Interpreter (doc h2)
 apply p h = equivFun (interp p) h
+-}
 
+{-
 -- testing
 emptyR : R
 emptyR = doc []
@@ -170,6 +170,14 @@ _ = transportRefl (rm zero (fst (apply patch1 ([] , refl)))
 -- this does not work, since hcomp does not compute
 -- _ : result' ≡ result''
 -- _ = {!!}
+-}
+
+I' : R → Type
+I' x = {!!}
+
+interpH : {n : ℕ}{h : History 0 n}{h' : History 0 n} →
+          doc h ≡ doc h' → singl h → singl h'
+interpH p = transport (cong I' p)
 
 _+++_ : {n1 n2 n3 : ℕ} → History n1 n2 → History n2 n3 → History n1 n3
 h1 +++ [] = h1
@@ -186,7 +194,6 @@ postulate
   mergeH : {n m k : ℕ} →
            (h1 : History 0 n) (h2 : History 0 m) →
            Σ[ n' ∈ ℕ ] (Σ[ h' ∈ History 0 n' ] (Extension h1 h' × Extension h2 h'))
-  interpH : {n : ℕ}{h : History 0 n}{h' : History 0 n} → doc h ≡ doc h' → singl h → singl h'
 
 toPath : {n : ℕ} (h : History 0 n) → doc [] ≡ doc h
 toPath [] = refl
@@ -203,5 +210,5 @@ extToPath {h = h} {h' = h'} _ = sym (toPath h) ∙ toPath h'
 merge : {n m : ℕ} {h1 : History 0 m} {h2 : History 0 m} →
         doc [] ≡ doc h1 → doc [] ≡ doc h2 →
         Σ[ n' ∈ ℕ ] (Σ[ h' ∈ History 0 n' ] (doc h1 ≡ doc h') × (doc h2 ≡ doc h'))
-merge p1 p2 = let (n' , (h' , e1 , e2)) = mergeH (interpH p1 []) (interpH p2 [])
+merge p1 p2 = let (n' , (h' , e1 , e2)) = mergeH {!interpH!} {!!}
   in (n' , (h' , (extToPath e1 , extToPath e2)))

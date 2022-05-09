@@ -136,10 +136,6 @@ Extension {n} {m} h1 h2 = Σ[ h3 ∈ History n m ] (h1 +++ h3) ≡ h2
 reflExt : ∀ {n} {h : History 0 n} → Extension h h
 reflExt = [] , refl
 
--- there has got to be a canonical (pretty) solution for this
-fromSingl : {A : Type}{a : A} → singl a → A
-fromSingl = fst
-
 module merging {
   mergeH : {n m : ℕ} →
            (h1 : History 0 n) (h2 : History 0 m) →
@@ -165,8 +161,12 @@ module merging {
                     e2 = ext2 , cong (_+++ ext2) p2P ∙ ext2-proof
     in (_ , (h' , extToPath e1 , extToPath e2))
 
+undo : ∀ {n m} → History n m → History m n
+undo [] = []
+undo (ADD s AT l :: h) = (RM l :: []) +++ (undo h)
+undo (RM l :: h) = (ADD "uh oh" AT l :: []) +++ undo h
+
 postulate
-  undo : ∀ {n m} → History n m → History m n
   undo-inverse : ∀ {n m} → (h : History n m)
                 → h +++ undo h ≡ []
 
@@ -185,7 +185,8 @@ p1 = addP "hello" (zero) []
 p0 : doc [] ≡ doc []
 p0 = refl
 
-open merging {mergeH}
--- none of these compute with transportRefl, I suspect because they depend on a number which does not compute
-_ : merge p0 p1 ≡ (_ , ADD "hello" AT zero :: [] , p1 , refl)
-_ = ΣPathP ({!!} , ΣPathP ({!!} , ΣPathP ({!!} , {!!})))
+
+-- open merging {mergeH}
+-- -- none of these compute with transportRefl, I suspect because they depend on a number which does not compute
+-- _ : merge p0 p1 ≡ (_ , ADD "hello" AT zero :: [] , p1 , refl)
+-- _ = ΣPathP ({!!} , ΣPathP ({!!} , ΣPathP ({!!} , {!!})))
