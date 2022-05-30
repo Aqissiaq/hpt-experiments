@@ -100,11 +100,13 @@ _ = transportRefl ("hello" ∷ [] , refl)
 
 result' : Interpreter (doc (RM zero :: (ADD "hello" AT zero :: [])))
 result' = apply patch2 (apply patch1 ([] , refl))
--- correct(?) but not very interesting
-_ : result' ≡ (rm zero (fst (apply patch1 ([] , refl)))
-              , (λ i → rm zero (snd (apply patch1 ([] , refl)) i)))
-_ = transportRefl (rm zero (fst (apply patch1 ([] , refl)))
-                  , (λ i → rm zero (snd (apply patch1 ([] , refl)) i)))
+
+_ : result' ≡ ( [] , λ i → rm zero (replay (ADD "hello" AT zero :: [])) )
+_ = result'
+  ≡⟨ cong (λ a → (apply patch2 a)) (transportRefl ("hello" ∷ [] , refl)) ⟩
+    (apply patch2 ("hello" ∷ [] , refl))
+  ≡⟨ (transportRefl ([] , λ i → rm zero (replay (ADD "hello" AT zero :: [])))) ⟩
+    ([] , refl) ∎
 
 result'' : Interpreter (doc (RM zero :: (ADD "hello" AT zero :: [])))
 result'' = apply (patch1 ∙ patch2) ([] , refl)
@@ -128,10 +130,10 @@ _ = transportRefl _
 resultH'' : InterpreterH (doc (RM zero :: (ADD "hello" AT zero :: [])))
 resultH'' = applyH (patch1 ∙ patch2) ([] , refl)
 
-_ : resultH'' ≡ ((RM zero :: (ADD "hello" AT zero :: [])) , refl)
-_ = resultH''
-  ≡⟨ transportRefl _ ⟩ _
-  ≡⟨ {!!} ⟩ ((RM zero :: (ADD "hello" AT zero :: [])) , refl) ∎
+-- _ : resultH'' ≡ ((RM zero :: (ADD "hello" AT zero :: [])) , refl)
+-- _ = resultH''
+--   ≡⟨ transportRefl _ ⟩ _
+--   ≡⟨ {!!} ⟩ ((RM zero :: (ADD "hello" AT zero :: [])) , refl) ∎
 
 
 {- MERGING -}
@@ -180,10 +182,10 @@ module merging {
         → Σ[ n' ∈ ℕ ] (Σ[ h' ∈ History 0 n' ] (doc h1 ≡ doc h') × (doc h2 ≡ doc h'))
   merge p1 p2 = let (p1H , p1P) = applyH p1 ([] , refl)
                     (p2H , p2P) = applyH p2 ([] , refl)
-                    (_ , (h' , ((ext1 , ext1-proof) , (ext2 , ext2-proof)))) = mergeH p1H p2H
+                    (n , (h' , ((ext1 , ext1-proof) , (ext2 , ext2-proof)))) = mergeH p1H p2H
                     e1 = ext1 , cong (_+++ ext1) p1P ∙ ext1-proof
                     e2 = ext2 , cong (_+++ ext2) p2P ∙ ext2-proof
-    in (_ , (h' , extToPath e1 , extToPath e2))
+    in (n , (h' , extToPath e1 , extToPath e2))
 
 undo : ∀ {n m} → History n m → History m n
 undo [] = []
@@ -197,9 +199,8 @@ postulate
 mergeH : {n m : ℕ} →
          (h1 : History 0 n) (h2 : History 0 m) →
          Σ[ n' ∈ ℕ ] (Σ[ h' ∈ History 0 n' ] (Extension h1 h' × Extension h2 h'))
-mergeH [] h2 = _ , h2 , (h2 , +++-left-id h2) , reflExt
-mergeH h1 [] = _ , (h1 , reflExt , h1 , +++-left-id h1)
-mergeH h1 h2 = _ , h1 , reflExt , (undo h2 +++ h1) ,
+mergeH {n} [] h2 = _ , h2 , (h2 , +++-left-id h2) , reflExt
+mergeH {n} h1 h2 = n , h1 , reflExt , (undo h2 +++ h1) ,
   sym (+++-assoc h2 (undo h2) h1) ∙ cong (_+++ h1) (undo-inverse h2) ∙ +++-left-id h1
 
 -- testing
@@ -209,7 +210,39 @@ p1 = addP "hello" (zero) []
 p0 : doc [] ≡ doc []
 p0 = refl
 
--- open merging {mergeH}
--- -- none of these compute with transportRefl, I suspect because they depend on a number which does not compute
--- _ : merge p0 p1 ≡ (_ , ADD "hello" AT zero :: [] , p1 , refl)
--- _ = ΣPathP ({!!} , ΣPathP ({!!} , ΣPathP ({!!} , {!!})))
+open merging {mergeH}
+-- paths-overs make this very difficult
+merged : Σ[ n ∈ ℕ ] (Σ[ h ∈ History 0 n ]
+  ((doc [] ≡ doc h) × (doc (ADD "hello" AT zero :: []) ≡ doc h)))
+merged = merge p0 p1
+
+n=1 : fst (merged) ≡ 1
+n=1 = fst (mergeH (fst (applyH p0 ([] , refl))) ((fst (applyH p1 ([] , refl)))))
+  ≡⟨ cong {y = []} (λ x → fst (mergeH x (fst (applyH p1 ([] , refl))))) (transportRefl _) ⟩
+    fst (mergeH [] ((fst (applyH p1 ([] , refl)))))
+  ≡⟨ cong {y = ADD "hello" AT zero :: []} (λ x → fst (mergeH [] x)) (transportRefl _) ⟩
+    fst (mergeH [] (ADD "hello" AT zero :: []))
+  ≡⟨ refl ⟩ 1 ∎
+
+merged' : Σ[ n ∈ ℕ ] (Σ[ h ∈ History 0 n ]
+        (doc (ADD "hello" AT zero :: []) ≡ doc h) × (doc (ADD "hello" AT zero :: []) ≡ doc h))
+merged' = merge p1 p1
+
+n'=1 : fst merged' ≡ 1
+n'=1 = fst (mergeH (fst (applyH p1 ([] , refl))) ((fst (applyH p1 ([] , refl)))))
+  ≡⟨ cong {y = (ADD "hello" AT zero :: [])} (λ x → fst (mergeH x (fst (applyH p1 ([] , refl))))) (transportRefl _) ⟩
+    fst (mergeH (ADD "hello" AT zero :: []) (fst (applyH p1 ([] , (λ _ → [])))))
+  ≡⟨ cong {y = (ADD "hello" AT zero :: [])} (λ x → fst (mergeH  (ADD "hello" AT zero :: []) x)) (transportRefl _) ⟩
+    fst (mergeH (ADD "hello" AT zero :: []) (ADD "hello" AT zero :: []))
+  ≡⟨ refl ⟩ 1 ∎
+
+-- -- already running into issues because transporting over non-constant n=1
+-- _ : subst (λ n → History 0 n) n=1 (fst (snd merged)) ≡ ADD "hello" AT zero :: []
+-- _ = {!!}
+
+-- _ : merged ≡ (suc 0 , ADD "hello" AT zero :: [] , p1 , refl)
+-- _ = ΣPathP (n=1 , ΣPathP (h=addhello , ΣPathP ({!!} , {!!})))
+--   where
+--   h=addhello : PathP (λ z → History 0 (n=1 z)) (fst (snd (mergeH (fst (applyH p0 ([] , (λ _ → [])))) (fst (applyH p1 ([] , (λ _ → []))))))) (ADD "hello" AT zero :: [])
+--   h=addhello = {!!}
+

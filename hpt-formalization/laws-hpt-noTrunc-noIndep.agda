@@ -238,19 +238,15 @@ optimize p = transport e (cong opt p)
     lemma : {X : Type} {x y : X} →
             (f g : x ≡ y) →
             (sym f ∙ g ≡ refl) ≡ (g ≡ f)
-    -- should this whole thing just be a J-proof?
-    lemma f g = sym f ∙ g ≡ refl
-      ≡⟨ cong (λ x → (sym f ∙ g) ≡ x) (sym (lCancel f)) ⟩
-        (sym f) ∙ g ≡ (sym f) ∙ f
-      -- this is the key step: the rest is just groupoidLaw shuffling
-      ≡⟨ ua (compl≡Equiv f (sym f ∙ g) (sym f ∙ f)) ⟩
-        (f ∙ (sym f ∙ g)) ≡ f ∙ (sym f ∙ f)
-      ≡⟨ cong₂ (λ a b → a ≡ b) (assoc f (sym f) g) (assoc f (sym f) f) ⟩
-        (f ∙ sym f) ∙ g ≡ (f ∙ sym f) ∙ f
-      ≡⟨ cong₂ (λ a b → (a ∙ g) ≡ b ∙ f) (rCancel f) (rCancel f) ⟩
-        refl ∙ g ≡ refl ∙ f
-      ≡⟨ cong₂ (λ a b → a ≡ b) (sym (lUnit g)) (sym (lUnit f)) ⟩
-        g ≡ f ∎
+    lemma {X} {x} = J P r
+      where
+      P : (y' : X) → x ≡ y' → Type _
+      P y' p' = (q' : x ≡ y') → (sym p' ∙ q' ≡ refl) ≡ (q' ≡ p')
+
+      r : P x refl
+      r q' = sym refl ∙ q' ≡ refl
+        ≡⟨ cong (λ p → p ∙ q' ≡ refl) symRefl ⟩ refl ∙ q' ≡ refl
+        ≡⟨ sym (cong (_≡ refl) (lUnit q')) ⟩ (q' ≡ refl) ∎
 
 module testing where
   interp : doc ≡ doc → repoType ≃ repoType

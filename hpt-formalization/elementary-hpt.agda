@@ -20,6 +20,7 @@ open import Cubical.Foundations.Prelude
   ; cong
   ; cong₂
   ; sym
+  ; transport
   )
 
 open import Cubical.HITs.S1.Base
@@ -113,5 +114,3 @@ invSuccPatch = sym add1
 
 compPatch : Patch
 compPatch = succPatch ∙ invSuccPatch
-
-

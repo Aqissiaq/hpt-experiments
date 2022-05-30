@@ -1,0 +1,15 @@
+Checking laws-hpt-noTrunc-noIndep (/home/aqissiaq/Documents/uib/HoTT/agda/cubical-hpt/hpt-formalization/laws-hpt-noTrunc-noIndep.agda).
+/home/aqissiaq/Documents/uib/HoTT/agda/cubical-hpt/hpt-formalization/laws-hpt-noTrunc-noIndep.agda:293,8-119
+transport reflc
+(transportRefl
+ (transportRefl (transportRefl (transportRefl _x_1478))))
+≡c
+transportRefl
+(transportRefl (transportRefl (transportRefl _x_1478)))
+!= R of type Type
+when checking that the expression
+transportRefl
+(transportRefl
+ (transportRefl
+  (transportRefl (transportRefl (transportRefl (transportRefl _))))))
+has type optimize' nopPatch ≡c reflc
