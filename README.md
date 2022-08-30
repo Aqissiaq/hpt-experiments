@@ -5,4 +5,4 @@
    - [5. A patch theory with laws](./hpt-formalization/laws-hpt-noTrunc-noIndep.agda) (and in particular the "program and prove" approach of 5.3)
    - [6. A patch theory with richer contexts](./hpt-formalization/richer-no-laws.agda) (without laws, an incomplete version with patch laws [here](./hpt-formalization/richer.agda))
  - [experiments](./experiments) contains various attempts at different formulations of version control systems as HITs
- - [trash-can](./trash-can) contains more attempts, but once I am even less happy with
+ - [trash-can](./trash-can) contains more attempts, but ones I am even less happy with
